@@ -1,4 +1,3 @@
-import copy
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -180,9 +179,14 @@ FEMALE_FACE_IRISES = {
     "iris_left": {"center": (0.3721897, 0.4281128), "radius": 0.0272003},
 }
 
-# TODO: replace with male-specific coordinates once available; deep-copied to decouple future edits.
-MALE_FACE = copy.deepcopy(FEMALE_FACE)
-MALE_FACE_IRISES = copy.deepcopy(FEMALE_FACE_IRISES)
+def _face_data_for_gender(gender: str):
+    # TODO: replace with male-specific coordinates once available; currently both paths use the female mask.
+    return FEMALE_FACE
+
+
+def _iris_data_for_gender(gender: str):
+    # TODO: replace with male-specific coordinates once available; currently both paths use the female mask.
+    return FEMALE_FACE_IRISES
 
 
 class ComfyUIFaceShaper:
@@ -271,8 +275,8 @@ class ComfyUIFaceShaper:
         camera_distance: float,
         line_thickness: float,
     ):
-        face_points = FEMALE_FACE if gender == "female" else MALE_FACE
-        iris_data = FEMALE_FACE_IRISES if gender == "female" else MALE_FACE_IRISES
+        face_points = _face_data_for_gender(gender)
+        iris_data = _iris_data_for_gender(gender)
 
         img = Image.new("RGB", (canvas_width, canvas_height), "white")
         draw = ImageDraw.Draw(img)
@@ -304,7 +308,7 @@ class ComfyUIFaceShaper:
             offset_x: float,
             offset_y: float,
         ) -> List[Tuple[float, float]]:
-            # Feature point counts are tiny; simple mean math avoids pulling numpy into this helper.
+            # Feature point counts are tiny; this keeps the helper self-contained without numpy math.
             if not points:
                 return []
             cx = sum(px for px, _ in points) / len(points)
@@ -355,7 +359,7 @@ class ComfyUIFaceShaper:
         draw_iris("iris_right")
         draw_iris("iris_left")
 
-        # ComfyUI expects a [B, H, W, C] float tensor in RGB order (B=1 here); simple numpy→torch keeps the data contiguous.
+        # ComfyUI expects a [B, H, W, C] float tensor while preserving the PIL RGB channel order (B=1 here); simple numpy→torch keeps the data contiguous.
         arr = np.array(img).astype(np.float32) / 255.0
         tensor = torch.from_numpy(arr).unsqueeze(0)
         return (tensor,)
