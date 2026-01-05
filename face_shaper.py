@@ -4,7 +4,7 @@ Refined implementation of the ComfyUI Face Shaper custom node.
 This module implements a custom node that draws a stylized facial mask based on
 SVG‑derived coordinates extracted from Face_Mask_female.svg (1024×1024). Users 
 can adjust the positions and sizes of 21 distinct facial features including:
-outer head outline, eyes, irises, eyebrows, nose parts (bridge, sidewalls, aler, 
+outer head outline, eyes, irises, eyebrows, nose parts (bridge, sidewalls, alae/nostrils, 
 tip), moustache (4 shapes), chin, and cheeks. All coordinates are normalized to 
 [0-1] range. Users can select a gender preset (currently both genders use the 
 same coordinates), change the canvas size and camera distance, and control the 
@@ -166,7 +166,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.458030, 0.465522),
         (0.414485, 0.406908),
     ],
-    # Nose aler (nostrils/bottom)
+    # Nose alae (nostrils/wings)
     "nose_aler_right": [
         (0.500000, 0.671066),
         (0.550785, 0.636907),
@@ -522,8 +522,8 @@ class ComfyUIFaceShaper:
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw moustache shapes (all 4 parts) with scaling and positioning
-        for moustache_part in ["moustache_top_left", "moustache_top_right", 
-                                "moustache_bottom_left", "moustache_bottom_right"]:
+        for moustache_part in ["moustache_top_left", "moustache_top_right",
+                               "moustache_bottom_left", "moustache_bottom_right"]:
             if moustache_part in face_points:
                 moustache = transform_polygon(
                     face_points[moustache_part],

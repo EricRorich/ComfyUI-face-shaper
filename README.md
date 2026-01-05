@@ -11,7 +11,7 @@ A custom ComfyUI node that draws a parametric facial mask with black lines on a 
 - **Separated iris controls**: Independent size and position controls for left and right irises
 - **Eye controls**: Scale and position each eye independently
 - **Eyebrow positioning**: Fine-tune left and right eyebrow positions
-- **Nose part positioning**: Adjust nose bridge, sidewalls, aler (nostrils), and tip independently
+- **Nose part positioning**: Adjust nose bridge, sidewalls, alae (nostril wings), and tip independently
 - **Canvas customization**: Configurable canvas size (256-2048px)
 - **Camera distance**: Global zoom control (0.5-2.0x)
 - **Line thickness**: Adjustable stroke width (0.5-10.0)
@@ -97,10 +97,10 @@ All parameters are exposed under the **required** section:
 ### Nose Controls
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `nose_aler_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril/aler horizontally |
-| `nose_aler_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril/aler vertically |
-| `nose_aler_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril/aler horizontally |
-| `nose_aler_right_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril/aler vertically |
+| `nose_aler_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril alae horizontally |
+| `nose_aler_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril alae vertically |
+| `nose_aler_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril alae horizontally |
+| `nose_aler_right_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril alae vertically |
 | `nose_sidewall_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left nose sidewall horizontally |
 | `nose_sidewall_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left nose sidewall vertically |
 | `nose_sidewall_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right nose sidewall horizontally |
@@ -175,7 +175,7 @@ The node renders 21 distinct SVG paths organized into feature groups:
 7. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves
 8. **Nose bridge** (left: 5 points, right: 5 points) - Upper nose lines
 9. **Nose sidewalls** (left: 3 points, right: 3 points) - Side of nose
-10. **Nose aler** (left: 6 points, right: 6 points) - Nostril areas
+10. **Nose alae** (left: 6 points, right: 6 points) - Nostril wing areas
 11. **Nose tip** (4 points) - Nose bottom connector
 
 ## Future Improvements
