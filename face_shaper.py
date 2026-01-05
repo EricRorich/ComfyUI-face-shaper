@@ -1,3 +1,4 @@
+import copy
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -179,9 +180,9 @@ FEMALE_FACE_IRISES = {
     "iris_left": {"center": (0.3721897, 0.4281128), "radius": 0.0272003},
 }
 
-# Placeholder: male coordinates will be swapped in once available; currently shares female data.
-MALE_FACE = FEMALE_FACE
-MALE_FACE_IRISES = FEMALE_FACE_IRISES
+# Placeholder: male coordinates will be swapped in once available; use copies to avoid accidental mutation when future data is added.
+MALE_FACE = copy.deepcopy(FEMALE_FACE)
+MALE_FACE_IRISES = copy.deepcopy(FEMALE_FACE_IRISES)
 
 
 class ComfyUIFaceShaper:
@@ -354,7 +355,7 @@ class ComfyUIFaceShaper:
         draw_iris("iris_right")
         draw_iris("iris_left")
 
-        # ComfyUI expects a [B, H, W, C] float tensor in RGB order (B fixed to 1 here).
+        # ComfyUI expects a [B, H, W, C] float tensor in RGB order (B=1 here); simple numpy→torch keeps the data contiguous.
         arr = np.array(img).astype(np.float32) / 255.0
         tensor = torch.from_numpy(arr).unsqueeze(0)
         return (tensor,)
