@@ -1,4 +1,3 @@
-import copy
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -180,9 +179,9 @@ FEMALE_FACE_IRISES = {
     "iris_left": {"center": (0.3721897, 0.4281128), "radius": 0.0272003},
 }
 
-# Placeholder: male coordinates will be swapped in once available; use copies to avoid accidental mutation when future data is added.
-MALE_FACE = copy.deepcopy(FEMALE_FACE)
-MALE_FACE_IRISES = copy.deepcopy(FEMALE_FACE_IRISES)
+# Placeholder: male coordinates will be swapped in once available (tuples are immutable, so sharing is safe).
+MALE_FACE = FEMALE_FACE
+MALE_FACE_IRISES = FEMALE_FACE_IRISES
 
 
 class ComfyUIFaceShaper:
@@ -285,10 +284,11 @@ class ComfyUIFaceShaper:
             y = (ry - 0.5) * canvas_height * camera_distance + canvas_height / 2.0
             return (x, y)
 
+        skip_prefixes = ("eye", "iris")
         static_keys = [
             key
             for key in face_points.keys()
-            if not key.startswith("eye") and not key.startswith("iris")
+            if not any(key.startswith(prefix) for prefix in skip_prefixes)
         ]
 
         for key in static_keys:
@@ -303,14 +303,8 @@ class ComfyUIFaceShaper:
             offset_x: float,
             offset_y: float,
         ) -> List[Tuple[float, float]]:
-            # Feature point counts are tiny; simple loops keep the math explicit.
-            sum_x = 0.0
-            sum_y = 0.0
-            for px, py in points:
-                sum_x += px
-                sum_y += py
-            cx = sum_x / len(points)
-            cy = sum_y / len(points)
+            # Feature point counts are tiny; use a simple mean for clarity.
+            cx, cy = np.array(points).mean(axis=0)
             transformed = []
             for rx, ry in points:
                 dx = (rx - cx) * scale_x
