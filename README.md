@@ -153,7 +153,8 @@ All size parameters are multipliers:
 
 ## Technical Details
 
-- **Coordinate extraction**: All 21 paths extracted from Face_Mask_female.svg (1024×1024) with coordinates normalized to [0-1] range
+- **Coordinate extraction**: All paths extracted from Face_Mask_female.svg (1024×1024) with coordinates normalized to [0-1] range
+- **Recent coordinate updates**: Nose geometry updated to 22 points (from path46), lips naming corrected to match visual positions
 - **Coordinate transform**: Relative coordinates (0-1 range) are converted to pixel coordinates using: 
   - `x = (rx - 0.5) * canvas_width * camera_distance + canvas_width / 2`
   - `y = (ry - 0.5) * canvas_height * camera_distance + canvas_height / 2`
@@ -168,11 +169,11 @@ The node renders distinct SVG paths organized into feature groups:
 1. **Outer head** (20 points) - Full face outline contour with scaling only
 2. **Cheeks** (left: 4 points, right: 4 points) - Static cheek contours
 3. **Chin** (7 points) - Lower jaw polygon with scaling only
-4. **Lips** (2 shapes: upper and lower; 10 points each) - Mouth/lips area with direction-specific scaling
+4. **Lips** (2 shapes: upper and lower; upper: 10 points, lower: 12 points) - Mouth/lips area with direction-specific scaling
 5. **Eyes** (left: 6 points, right: 6 points) - Eye outlines
 6. **Irises** (left: circle, right: circle) - Pupil/iris circles
 7. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves
-8. **Nose** (26 points) - Single merged nose object including bridge, sidewalls, alae, and tip
+8. **Nose** (22 points) - Single merged nose object including bridge, sidewalls, alae, and tip
 
 ## Future Improvements
 
@@ -183,7 +184,16 @@ The node renders distinct SVG paths organized into feature groups:
 
 ## Recent Changes
 
-### Version with Merged Nose and Split Lips (Latest)
+### Latest Update: SVG Coordinate Refresh and Lip Naming Fix
+- **Nose geometry**: Updated to latest SVG path (22 points, refined shape)
+- **Lip naming corrected**: Fixed naming mismatch where upper and lower lip data were swapped
+  - `lips_upper` now correctly maps to the visual upper lip (smaller y values)
+  - `lips_lower` now correctly maps to the visual lower lip (larger y values)
+  - Lip scaling behavior preserved: upper scales upward, lower scales downward from midline
+- **Iris positions**: Updated to match latest SVG coordinates
+- All changes maintain backward compatibility with existing parameter behavior
+
+### Version with Merged Nose and Split Lips
 - **Nose**: Merged all nose parts (bridge, sidewalls, alae, tip) into a single object with simplified controls
   - Removed 12 individual nose positioning parameters
   - Added 3 new parameters: `nose_pos_y`, `nose_size_x`, `nose_size_y`
