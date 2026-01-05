@@ -303,6 +303,7 @@ class ComfyUIFaceShaper:
             offset_x: float,
             offset_y: float,
         ) -> List[Tuple[float, float]]:
+            # Feature point counts are tiny; simple loops keep the math explicit.
             sum_x = 0.0
             sum_y = 0.0
             for px, py in points:
