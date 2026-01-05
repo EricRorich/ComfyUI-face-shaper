@@ -657,12 +657,10 @@ class ComfyUIFaceShaper:
         draw_iris_with_params("iris_left", iris_left_size, iris_left_pos_x, iris_left_pos_y)
 
         # Convert the PIL image to a tensor of shape [B, H, W, C] (B=1).
-        # For transparent background, we need to convert RGBA to RGB with proper alpha handling
-        if transparent_background:
-            # Convert RGBA to RGB with transparency composited
-            arr = np.array(img).astype(np.float32) / 255.0
-        else:
-            arr = np.array(img).astype(np.float32) / 255.0
+        # The image is already in the correct format (RGB or RGBA) based on how it was created.
+        # For white background: RGB mode → 3 channels
+        # For transparent background: RGBA mode → 4 channels
+        arr = np.array(img).astype(np.float32) / 255.0
         tensor = torch.from_numpy(arr).unsqueeze(0)
         return (tensor,)
 
