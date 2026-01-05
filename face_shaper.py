@@ -1,3 +1,19 @@
+"""
+Refined implementation of the ComfyUI Face Shaper custom node.
+
+This module implements a custom node that draws a stylized facial mask based on
+SVG‑derived coordinates. Users can adjust the positions and sizes of the eyes
+and irises, select a gender preset (currently both genders use the same
+coordinates), change the canvas size and camera distance, and control the line
+thickness. The output is a black‑on‑white image tensor compatible with
+ComfyUI workflows.
+
+Compared to the original `face_shaper.py`, this version registers the node
+with a hyphen‑free identifier in `NODE_CLASS_MAPPINGS` and provides a
+corresponding `__init__.py` for package registration. These changes ensure
+ComfyUI can discover and load the node correctly.
+"""
+
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -104,7 +120,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.459189, 0.749262),
         (0.5, 0.764153),
     ],
-    # SVG-derived data; repeated points are preserved from the source polyline.
+    # SVG‑derived data; repeated points are preserved from the source polyline.
     "mouth_bottom_right": [
         (0.499984, 0.762932),
         (0.541349, 0.750634),
@@ -175,28 +191,36 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
     ],
 }
 
+# Iris data is kept separate because irises are drawn as circles.
 FEMALE_FACE_IRISES = {
     "iris_right": {"center": (0.6278103, 0.4281128), "radius": 0.0272003},
     "iris_left": {"center": (0.3721897, 0.4281128), "radius": 0.0272003},
 }
 
 def _face_data_for_gender(gender: str):
-    # TODO: replace with male-specific coordinates once available; currently both paths use the female mask.
+    """Return the polyline coordinates for the requested gender preset."""
+    # TODO: replace with male‑specific coordinates once available; currently both
+    # genders use the female mask.
     return FEMALE_FACE
 
 
 def _iris_data_for_gender(gender: str):
-    # TODO: replace with male-specific coordinates once available; currently both paths use the female mask.
+    """Return the iris data for the requested gender preset."""
+    # TODO: replace with male‑specific coordinates once available; currently both
+    # genders use the female mask.
     return FEMALE_FACE_IRISES
 
 
 class ComfyUIFaceShaper:
+    """Custom node that draws a parametric facial mask."""
+
     CATEGORY = "face"
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "draw_face"
 
     @classmethod
     def INPUT_TYPES(cls):
+        """Define adjustable parameters for the node."""
         return {
             "required": {
                 "canvas_width": ("INT", {"default": 1024, "min": 256, "max": 2048}),
@@ -276,32 +300,36 @@ class ComfyUIFaceShaper:
         camera_distance: float,
         line_thickness: float,
     ):
+        """Render the facial mask image and return it as a tensor."""
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
 
+        # Create a blank canvas filled with white.
         img = Image.new("RGB", (canvas_width, canvas_height), "white")
         draw = ImageDraw.Draw(img)
-        # Pillow line/ellipse drawing uses integer stroke widths; round and enforce a minimum of 1 so lines stay visible.
+        # Pillow expects integer stroke widths; round and enforce a minimum of 1 so lines stay visible.
         stroke_width = max(1, int(round(line_thickness)))
 
         def to_pixel(point: Tuple[float, float]) -> Tuple[float, float]:
+            """Convert relative coordinates in range [0,1] to pixel positions."""
             rx, ry = point
             x = (rx - 0.5) * canvas_width * camera_distance + canvas_width / 2.0
             y = (ry - 0.5) * canvas_height * camera_distance + canvas_height / 2.0
             return (x, y)
 
+        # Draw static facial features (everything except eyes and irises).
         skip_prefixes = ("eye", "iris")
         static_keys = [
             key
             for key in face_points.keys()
             if not any(key.startswith(prefix) for prefix in skip_prefixes)
         ]
-
         for key in static_keys:
             polyline = face_points[key]
             pixel_points = [to_pixel(pt) for pt in polyline]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
+        # Helper to scale and translate eye polygons.
         def transform_eye(
             points: List[Tuple[float, float]],
             scale_x: float,
@@ -309,7 +337,6 @@ class ComfyUIFaceShaper:
             offset_x: float,
             offset_y: float,
         ) -> List[Tuple[float, float]]:
-            # Feature point counts are tiny; this keeps the helper self-contained without numpy math.
             if not points:
                 return []
             cx = sum(px for px, _ in points) / len(points)
@@ -321,6 +348,7 @@ class ComfyUIFaceShaper:
                 transformed.append((cx + dx + offset_x, cy + dy + offset_y))
             return transformed
 
+        # Transform and draw both eyes.
         eye_right = transform_eye(
             face_points["eye_right"],
             eye_right_size_x,
@@ -335,17 +363,17 @@ class ComfyUIFaceShaper:
             eye_left_pos_x,
             eye_left_pos_y,
         )
-
         draw.line([to_pixel(pt) for pt in eye_right], fill=(0, 0, 0), width=stroke_width)
         draw.line([to_pixel(pt) for pt in eye_left], fill=(0, 0, 0), width=stroke_width)
 
+        # Draw both irises as circles.
         def draw_iris(center_key: str):
             base_center = iris_data[center_key]["center"]
             base_radius = iris_data[center_key]["radius"]
             cx_rel = base_center[0] + iris_pos_x
             cy_rel = base_center[1] + iris_pos_y
             cx, cy = to_pixel((cx_rel, cy_rel))
-            # Use the smaller canvas dimension so the circular iris stays round across aspect ratios.
+            # Use the smaller canvas dimension so the iris remains round across aspect ratios.
             radius_px = (
                 base_radius * iris_size * min(canvas_width, canvas_height) * camera_distance
             )
@@ -360,16 +388,20 @@ class ComfyUIFaceShaper:
         draw_iris("iris_right")
         draw_iris("iris_left")
 
-        # ComfyUI expects a [B, H, W, C] float tensor while preserving the PIL RGB channel order (B=1 here); simple numpy→torch keeps the data contiguous.
+        # Convert the PIL image to a tensor of shape [B, H, W, C] (B=1).
         arr = np.array(img).astype(np.float32) / 255.0
         tensor = torch.from_numpy(arr).unsqueeze(0)
         return (tensor,)
 
 
+# Register the node with hyphen‑free identifiers. These mappings are used by
+# ComfyUI to locate and instantiate the node. Avoiding hyphens ensures the
+# identifiers are valid Python identifiers, which improves compatibility with
+# ComfyUI’s loading mechanism.
 NODE_CLASS_MAPPINGS = {
-    "ComfyUI-face-shaper": ComfyUIFaceShaper,
+    "ComfyUIFaceShaper": ComfyUIFaceShaper,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ComfyUI-face-shaper": "Face Shaper",
+    "ComfyUIFaceShaper": "Face Shaper",
 }
