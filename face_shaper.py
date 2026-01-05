@@ -1,4 +1,4 @@
-import math
+import copy
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -181,8 +181,8 @@ FEMALE_FACE_IRISES = {
 }
 
 # Placeholder: male coordinates will be swapped in once available.
-MALE_FACE = FEMALE_FACE
-MALE_FACE_IRISES = FEMALE_FACE_IRISES
+MALE_FACE = copy.deepcopy(FEMALE_FACE)
+MALE_FACE_IRISES = copy.deepcopy(FEMALE_FACE_IRISES)
 
 
 class ComfyUIFaceShaper:
@@ -276,7 +276,7 @@ class ComfyUIFaceShaper:
 
         img = Image.new("RGB", (canvas_width, canvas_height), "white")
         draw = ImageDraw.Draw(img)
-        # Pillow expects an integer stroke width; round while enforcing a minimum.
+        # Pillow's drawing APIs require integer stroke widths; round while enforcing a minimum.
         stroke_width = max(1, int(round(line_thickness)))
 
         def to_pixel(point: Tuple[float, float]) -> Tuple[float, float]:
@@ -355,6 +355,7 @@ class ComfyUIFaceShaper:
         draw_iris("iris_right")
         draw_iris("iris_left")
 
+        # ComfyUI expects an [B, H, W, C] float tensor in RGB order.
         arr = np.array(img).astype(np.float32) / 255.0
         tensor = torch.from_numpy(arr).unsqueeze(0)
         return (tensor,)
