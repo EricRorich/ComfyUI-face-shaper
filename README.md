@@ -1,19 +1,23 @@
 # ComfyUI-face-shaper
 
-A custom ComfyUI node that draws a parametric facial mask with black lines on a white background. The node provides extensive control over individual facial features including eyes, irises, head outline, lips, eyebrows, and nose parts, all derived from SVG coordinates.
+A custom ComfyUI node that draws a parametric facial mask with black lines on a white background. The node provides extensive control over individual facial features including outer head outline, eyes, irises, eyebrows, nose parts, moustache, chin, and cheeks. All coordinates are derived from an SVG face mask template with normalized [0-1] relative positioning.
 
 ## Features
 
+- **21 distinct facial features** extracted from Face_Mask_female.svg (1024×1024)
+- **Outer head outline**: Full face contour with independent scaling and positioning
+- **Moustache controls**: 4 separate moustache shapes (top/bottom, left/right) with unified size and position controls
+- **Chin polygon**: Dedicated chin shape with scaling and positioning
 - **Separated iris controls**: Independent size and position controls for left and right irises
-- **Head outline scaling**: Adjust head width and height independently
-- **Lips sizing**: Control upper and lower lip dimensions separately
-- **Eyebrow positioning**: Fine-tune left and right eyebrow positions
-- **Nose part positioning**: Adjust nose bridge, sidewalls, and aler (nostrils) independently
 - **Eye controls**: Scale and position each eye independently
+- **Eyebrow positioning**: Fine-tune left and right eyebrow positions
+- **Nose part positioning**: Adjust nose bridge, sidewalls, alae (nostril wings), and tip independently
 - **Canvas customization**: Configurable canvas size (256-2048px)
 - **Camera distance**: Global zoom control (0.5-2.0x)
 - **Line thickness**: Adjustable stroke width (0.5-10.0)
 - **Gender presets**: Female and male options (currently both use female coordinates)
+- **Per-feature scaling**: Each feature group has its own scaling controls to prevent distortion
+- **Zero default offsets**: All position parameters default to 0.0 for neutral alignment
 
 ## Installation
 
@@ -58,19 +62,29 @@ All parameters are exposed under the **required** section:
 | `iris_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right iris horizontally |
 | `iris_right_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate right iris vertically |
 
-### Head Outline Controls
+### Outer Head Outline Controls
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `head_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale head outline width |
-| `head_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale head outline height |
+| `outer_head_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale outer head width |
+| `outer_head_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale outer head height |
+| `outer_head_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate outer head horizontally |
+| `outer_head_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate outer head vertically |
 
-### Lips Controls
+### Moustache Controls
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `lips_upper_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale upper lip width |
-| `lips_upper_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale upper lip height |
-| `lips_lower_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale lower lip width |
-| `lips_lower_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale lower lip height |
+| `moustache_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale moustache width (applies to all 4 parts) |
+| `moustache_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale moustache height (applies to all 4 parts) |
+| `moustache_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate moustache horizontally |
+| `moustache_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate moustache vertically |
+
+### Chin Controls
+| Parameter | Type | Default | Range | Description |
+|-----------|------|---------|-------|-------------|
+| `chin_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale chin width |
+| `chin_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale chin height |
+| `chin_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate chin horizontally |
+| `chin_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate chin vertically |
 
 ### Eyebrow Controls
 | Parameter | Type | Default | Range | Description |
@@ -83,10 +97,10 @@ All parameters are exposed under the **required** section:
 ### Nose Controls
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `nose_aler_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril/aler horizontally |
-| `nose_aler_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril/aler vertically |
-| `nose_aler_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril/aler horizontally |
-| `nose_aler_right_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril/aler vertically |
+| `nose_aler_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril alae horizontally |
+| `nose_aler_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril alae vertically |
+| `nose_aler_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril alae horizontally |
+| `nose_aler_right_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril alae vertically |
 | `nose_sidewall_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left nose sidewall horizontally |
 | `nose_sidewall_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left nose sidewall vertically |
 | `nose_sidewall_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right nose sidewall horizontally |
@@ -121,8 +135,9 @@ This output can be used as:
 3. Adjust parameters to customize the facial features:
    - Increase `iris_left_size` and `iris_right_size` for larger irises
    - Adjust `eyebrow_left_pos_y` and `eyebrow_right_pos_y` to raise/lower eyebrows
-   - Scale `lips_upper_size_x` for wider lips
-   - Modify `head_size_x` and `head_size_y` for different face shapes
+   - Scale `moustache_size_x` and `moustache_size_y` for different moustache sizes
+   - Modify `outer_head_size_x` and `outer_head_size_y` for different head shapes
+   - Adjust `chin_pos_y` to move the chin up or down
 
 ## Coordinate System
 
@@ -139,11 +154,29 @@ All size parameters are multipliers:
 
 ## Technical Details
 
+- **Coordinate extraction**: All 21 paths extracted from Face_Mask_female.svg (1024×1024) with coordinates normalized to [0-1] range
 - **Coordinate transform**: Relative coordinates (0-1 range) are converted to pixel coordinates using: 
   - `x = (rx - 0.5) * canvas_width * camera_distance + canvas_width / 2`
   - `y = (ry - 0.5) * canvas_height * camera_distance + canvas_height / 2`
-- **Feature transforms**: Each feature group (eyes, lips, nose parts, etc.) has its own transformation applied before pixel conversion
+- **Feature transforms**: Each feature group (eyes, moustache, chin, outer_head, etc.) has its own transformation applied before pixel conversion to avoid cross-feature distortion
 - **Drawing method**: Uses PIL (Pillow) to draw polylines and circles, then converts to PyTorch tensor
+- **Per-feature scaling**: Scaling parameters are scoped to their respective features only
+
+## Facial Features Included
+
+The node renders 21 distinct SVG paths organized into feature groups:
+
+1. **Outer head** (20 points) - Full face outline contour
+2. **Cheeks** (left: 4 points, right: 4 points) - Static cheek contours
+3. **Chin** (7 points) - Lower jaw polygon
+4. **Moustache** (4 shapes: top-left, top-right, bottom-left, bottom-right; 6 points each) - Upper lip/moustache area
+5. **Eyes** (left: 6 points, right: 6 points) - Eye outlines
+6. **Irises** (left: circle, right: circle) - Pupil/iris circles
+7. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves
+8. **Nose bridge** (left: 5 points, right: 5 points) - Upper nose lines
+9. **Nose sidewalls** (left: 3 points, right: 3 points) - Side of nose
+10. **Nose alae** (left: 6 points, right: 6 points) - Nostril wing areas
+11. **Nose tip** (4 points) - Nose bottom connector
 
 ## Future Improvements
 
@@ -167,4 +200,4 @@ This project follows the same license as ComfyUI.
 
 ## Credits
 
-Coordinates derived from SVG face mask templates. This is a custom node implementation for the ComfyUI framework.
+Coordinates derived from Face_Mask_female.svg template (1024×1024). This is a custom node implementation for the ComfyUI framework.

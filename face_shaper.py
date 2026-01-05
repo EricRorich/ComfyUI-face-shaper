@@ -2,16 +2,22 @@
 Refined implementation of the ComfyUI Face Shaper custom node.
 
 This module implements a custom node that draws a stylized facial mask based on
-SVG‑derived coordinates. Users can adjust the positions and sizes of the eyes
-and irises, select a gender preset (currently both genders use the same
-coordinates), change the canvas size and camera distance, and control the line
-thickness. The output is a black‑on‑white image tensor compatible with
+SVG‑derived coordinates extracted from Face_Mask_female.svg (1024×1024). Users 
+can adjust the positions and sizes of 21 distinct facial features including:
+outer head outline, eyes, irises, eyebrows, nose parts (bridge, sidewalls, alae/nostrils, 
+tip), moustache (4 shapes), chin, and cheeks. All coordinates are normalized to 
+[0-1] range. Users can select a gender preset (currently both genders use the 
+same coordinates), change the canvas size and camera distance, and control the 
+line thickness. The output is a black‑on‑white image tensor compatible with
 ComfyUI workflows.
 
-Compared to the original `face_shaper.py`, this version registers the node
-with a hyphen‑free identifier in `NODE_CLASS_MAPPINGS` and provides a
-corresponding `__init__.py` for package registration. These changes ensure
-ComfyUI can discover and load the node correctly.
+Key improvements in this version:
+- All 21 paths extracted from the updated 1024×1024 SVG with accurate normalized coordinates
+- Integrated outer head outline and moustache/chin polygons into the drawing routine
+- Corrected jaw/mouth coordinates to match the SVG precisely
+- All position parameters default to 0.0 (zero offsets by default)
+- Per-feature scaling controls prevent distortion across unrelated features
+- Maintains proper node structure with CATEGORY="face", INPUT_TYPES, RETURN_TYPES=("IMAGE",)
 """
 
 from typing import Dict, List, Tuple
@@ -21,154 +27,32 @@ import torch
 from PIL import Image, ImageDraw
 
 # relative coordinates for female face (0–1 range)
+# Extracted from Face_Mask_female.svg (1024x1024 normalized coordinates)
 FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
-    # Head outline polygon
-    "head_outlines": [
-        (0.818298, 0.464385),
-        (0.792342, 0.386617),
-        (0.773225, 0.603442),
-        (0.683077, 0.729073),
-        (0.654307, 0.695507),
-        (0.608616, 0.82843),
-        (0.625626, 0.852528),
-        (0.611373, 0.904394),
-        (0.594625, 0.880454),
-        (0.58201, 0.926529),
-        (0.569026, 0.890426),
-        (0.554594, 0.935787),
-        (0.540844, 0.851369),
-        (0.532223, 0.800273),
-        (0.5, 0.838925),
-        (0.5, 0.800273),
-        (0.467777, 0.800273),
-        (0.459156, 0.851369),
-        (0.445406, 0.935787),
-        (0.430974, 0.890426),
-        (0.41799, 0.926529),
-        (0.405375, 0.880454),
-        (0.388628, 0.904394),
-        (0.374374, 0.852528),
-        (0.391384, 0.82843),
-        (0.345693, 0.695507),
-        (0.316923, 0.729073),
-        (0.226775, 0.603442),
-        (0.207658, 0.386617),
-        (0.181702, 0.464385),
+    # Outer head outline
+    "outer_head": [
+        (0.571760, 0.935952),
+        (0.679310, 0.854875),
+        (0.752114, 0.752289),
+        (0.791825, 0.621574),
+        (0.791825, 0.547116),
+        (0.818299, 0.464385),
+        (0.791825, 0.381654),
+        (0.791825, 0.193027),
+        (0.626362, 0.072239),
+        (0.500000, 0.072239),
+        (0.373638, 0.072239),
+        (0.208175, 0.193027),
+        (0.208175, 0.381654),
+        (0.181701, 0.464385),
+        (0.208175, 0.547116),
+        (0.208175, 0.621574),
+        (0.247886, 0.752289),
+        (0.320690, 0.854875),
+        (0.428240, 0.935952),
+        (0.500000, 0.935174),
     ],
-    # Eyes
-    "eye_right": [
-        (0.587679, 0.449786),
-        (0.653864, 0.474606),
-        (0.723844, 0.449786),
-        (0.695229, 0.412257),
-        (0.711775, 0.43324),
-        (0.723844, 0.449786),
-        (0.587679, 0.449786),
-        (0.653864, 0.400148),
-        (0.695229, 0.412257),
-    ],
-    "eye_left": [
-        (0.412321, 0.449786),
-        (0.346136, 0.474606),
-        (0.276156, 0.449786),
-        (0.304771, 0.412257),
-        (0.288225, 0.43324),
-        (0.276156, 0.449786),
-        (0.412321, 0.449786),
-        (0.346136, 0.400148),
-        (0.304771, 0.412257),
-    ],
-    # Eyebrows
-    "eyebrow_right": [
-        (0.568969, 0.38345),
-        (0.721171, 0.333225),
-        (0.792342, 0.386617),
-        (0.721472, 0.361798),
-        (0.585515, 0.406908),
-    ],
-    "eyebrow_left": [
-        (0.431031, 0.38345),
-        (0.278829, 0.333225),
-        (0.207658, 0.386617),
-        (0.278528, 0.361798),
-        (0.414485, 0.406908),
-    ],
-    # Lips
-    "lips_upper": [
-        (0.391922, 0.753943),
-        (0.444298, 0.754226),
-        (0.459189, 0.749262),
-        (0.475736, 0.726097),
-        (0.5, 0.736025),
-        (0.524265, 0.726097),
-        (0.540811, 0.749262),
-        (0.555702, 0.754226),
-        (0.608079, 0.753943),
-        (0.5, 0.764153),
-        (0.391922, 0.753943),
-    ],
-    "lips_lower": [
-        (0.392433, 0.754258),
-        (0.442072, 0.754981),
-        (0.458618, 0.750634),
-        (0.450345, 0.800273),
-        (0.499984, 0.800273),
-        (0.499984, 0.762932),
-        (0.549622, 0.800273),
-        (0.541349, 0.750634),
-        (0.557895, 0.754981),
-        (0.607534, 0.754258),
-        (0.499984, 0.800273),
-        (0.392433, 0.754258),
-    ],
-    # Nose bridge
-    "nose_bridge_right": [
-        (0.544149, 0.629847),
-        (0.525524, 0.579209),
-        (0.524094, 0.441927),
-        (0.546532, 0.412688),
-        (0.568969, 0.38345),
-    ],
-    "nose_bridge_left": [
-        (0.455851, 0.629847),
-        (0.474476, 0.579209),
-        (0.475906, 0.441927),
-        (0.453468, 0.412688),
-        (0.431031, 0.38345),
-    ],
-    # Nose sidewall
-    "nose_sidewall_right": [
-        (0.544149, 0.629847),
-        (0.54197, 0.465522),
-        (0.585515, 0.406908),
-    ],
-    "nose_sidewall_left": [
-        (0.455851, 0.629847),
-        (0.45803, 0.465522),
-        (0.414485, 0.406908),
-    ],
-    # Nose aler (nostrils/bottom)
-    "nose_aler_right": [
-        (0.5, 0.671066),
-        (0.550785, 0.636907),
-        (0.544459, 0.655884),
-        (0.569762, 0.648926),
-        (0.571659, 0.619195),
-        (0.544459, 0.542654),
-        (0.5, 0.643776),
-        (0.544149, 0.629847),
-    ],
-    "nose_aler_left": [
-        (0.5, 0.671066),
-        (0.449215, 0.636907),
-        (0.455541, 0.655884),
-        (0.430238, 0.648926),
-        (0.428341, 0.619195),
-        (0.455541, 0.542654),
-        (0.5, 0.643776),
-        (0.455851, 0.629847),
-    ],
-    # Cheeks (kept for reference, not individually adjustable)
+    # Cheeks
     "cheek_right": [
         (0.654307, 0.695507),
         (0.818298, 0.464385),
@@ -181,12 +65,138 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.226775, 0.603442),
         (0.316923, 0.729073),
     ],
+    # Chin
+    "chin": [
+        (0.445406, 0.935787),
+        (0.430974, 0.890426),
+        (0.459156, 0.851369),
+        (0.500000, 0.838925),
+        (0.540844, 0.851369),
+        (0.569026, 0.890426),
+        (0.554594, 0.935787),
+    ],
+    # Moustache shapes
+    "moustache_top_left": [
+        (0.499984, 0.762932),
+        (0.458618, 0.750634),
+        (0.442072, 0.754981),
+        (0.392433, 0.754258),
+        (0.450345, 0.800273),
+        (0.499984, 0.800273),
+    ],
+    "moustache_top_right": [
+        (0.499984, 0.762932),
+        (0.541349, 0.750634),
+        (0.557895, 0.754981),
+        (0.607534, 0.754258),
+        (0.549622, 0.800273),
+        (0.499984, 0.800273),
+    ],
+    "moustache_bottom_left": [
+        (0.500000, 0.736025),
+        (0.475736, 0.726097),
+        (0.391922, 0.753943),
+        (0.444298, 0.754226),
+        (0.459189, 0.749262),
+        (0.500000, 0.764153),
+    ],
+    "moustache_bottom_right": [
+        (0.500000, 0.736025),
+        (0.524265, 0.726097),
+        (0.608079, 0.753943),
+        (0.555702, 0.754226),
+        (0.540811, 0.749262),
+        (0.500000, 0.764153),
+    ],
+    # Eyes
+    "eye_right": [
+        (0.653864, 0.474606),
+        (0.723844, 0.449786),
+        (0.711775, 0.433240),
+        (0.695229, 0.412257),
+        (0.653864, 0.400148),
+        (0.587679, 0.449786),
+    ],
+    "eye_left": [
+        (0.288225, 0.433240),
+        (0.276156, 0.449786),
+        (0.346136, 0.474606),
+        (0.412321, 0.449786),
+        (0.346136, 0.400148),
+        (0.304771, 0.412257),
+    ],
+    # Eyebrows
+    "eyebrow_right": [
+        (0.568969, 0.383450),
+        (0.721171, 0.333225),
+        (0.792342, 0.386617),
+        (0.721472, 0.361798),
+        (0.585515, 0.406908),
+    ],
+    "eyebrow_left": [
+        (0.431031, 0.383450),
+        (0.278829, 0.333225),
+        (0.207658, 0.386617),
+        (0.278528, 0.361798),
+        (0.414485, 0.406908),
+    ],
+    # Nose bridge
+    "nose_bridge_right": [
+        (0.544149, 0.629847),
+        (0.525524, 0.579209),
+        (0.524094, 0.441927),
+        (0.546532, 0.412688),
+        (0.568969, 0.383450),
+    ],
+    "nose_bridge_left": [
+        (0.455851, 0.629847),
+        (0.474476, 0.579209),
+        (0.475906, 0.441927),
+        (0.453468, 0.412688),
+        (0.431031, 0.383450),
+    ],
+    # Nose sidewall
+    "nose_sidewall_right": [
+        (0.544149, 0.629847),
+        (0.541970, 0.465522),
+        (0.585515, 0.406908),
+    ],
+    "nose_sidewall_left": [
+        (0.455851, 0.629847),
+        (0.458030, 0.465522),
+        (0.414485, 0.406908),
+    ],
+    # Nose alae (nostrils/wings)
+    "nose_aler_right": [
+        (0.500000, 0.671066),
+        (0.550785, 0.636907),
+        (0.544459, 0.655884),
+        (0.569762, 0.648926),
+        (0.571659, 0.619195),
+        (0.544459, 0.542654),
+    ],
+    "nose_aler_left": [
+        (0.500000, 0.671066),
+        (0.449215, 0.636907),
+        (0.455541, 0.655884),
+        (0.430238, 0.648926),
+        (0.428341, 0.619195),
+        (0.455541, 0.542654),
+    ],
+    # Nose tip
+    "nose_tip": [
+        (0.500000, 0.643776),
+        (0.455851, 0.629847),
+        (0.500000, 0.643776),
+        (0.544149, 0.629847),
+    ],
 }
 
 # Iris data is kept separate because irises are drawn as circles.
+# Extracted from Face_Mask_female.svg (circles converted to center+radius)
 FEMALE_FACE_IRISES = {
-    "iris_right": {"center": (0.6278103, 0.4281128), "radius": 0.0272003},
-    "iris_left": {"center": (0.3721897, 0.4281128), "radius": 0.0272003},
+    "iris_right": {"center": (0.655011, 0.428113), "radius": 0.0272003},
+    "iris_left": {"center": (0.344990, 0.428113), "radius": 0.0272003},
 }
 
 def _face_data_for_gender(gender: str):
@@ -276,31 +286,56 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
-                # Head outline
-                "head_size_x": (
+                # Outer head outline
+                "outer_head_size_x": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "head_size_y": (
+                "outer_head_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                # Lips
-                "lips_upper_size_x": (
+                "outer_head_pos_x": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "outer_head_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                # Moustache
+                "moustache_size_x": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "lips_upper_size_y": (
+                "moustache_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "lips_lower_size_x": (
+                "moustache_pos_x": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "moustache_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                # Chin
+                "chin_size_x": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "lips_lower_size_y": (
+                "chin_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "chin_pos_x": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "chin_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
                 # Eyebrows
                 "eyebrow_left_pos_x": (
@@ -399,12 +434,18 @@ class ComfyUIFaceShaper:
         iris_right_size: float,
         iris_right_pos_x: float,
         iris_right_pos_y: float,
-        head_size_x: float,
-        head_size_y: float,
-        lips_upper_size_x: float,
-        lips_upper_size_y: float,
-        lips_lower_size_x: float,
-        lips_lower_size_y: float,
+        outer_head_size_x: float,
+        outer_head_size_y: float,
+        outer_head_pos_x: float,
+        outer_head_pos_y: float,
+        moustache_size_x: float,
+        moustache_size_y: float,
+        moustache_pos_x: float,
+        moustache_pos_y: float,
+        chin_size_x: float,
+        chin_size_y: float,
+        chin_pos_x: float,
+        chin_pos_y: float,
         eyebrow_left_pos_x: float,
         eyebrow_left_pos_y: float,
         eyebrow_right_pos_x: float,
@@ -468,39 +509,42 @@ class ComfyUIFaceShaper:
         ) -> List[Tuple[float, float]]:
             return [(rx + offset_x, ry + offset_y) for rx, ry in points]
 
-        # Draw head outline with scaling
-        if "head_outlines" in face_points:
-            head_outline = transform_polygon(
-                face_points["head_outlines"],
-                head_size_x,
-                head_size_y,
-                0.0,
-                0.0,
+        # Draw outer head outline with scaling and positioning
+        if "outer_head" in face_points:
+            outer_head = transform_polygon(
+                face_points["outer_head"],
+                outer_head_size_x,
+                outer_head_size_y,
+                outer_head_pos_x,
+                outer_head_pos_y,
             )
-            pixel_points = [to_pixel(pt) for pt in head_outline]
+            pixel_points = [to_pixel(pt) for pt in outer_head]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw lips with scaling
-        if "lips_upper" in face_points:
-            lips_upper = transform_polygon(
-                face_points["lips_upper"],
-                lips_upper_size_x,
-                lips_upper_size_y,
-                0.0,
-                0.0,
-            )
-            pixel_points = [to_pixel(pt) for pt in lips_upper]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+        # Draw moustache shapes (all 4 parts) with scaling and positioning
+        for moustache_part in ["moustache_top_left", "moustache_top_right",
+                               "moustache_bottom_left", "moustache_bottom_right"]:
+            if moustache_part in face_points:
+                moustache = transform_polygon(
+                    face_points[moustache_part],
+                    moustache_size_x,
+                    moustache_size_y,
+                    moustache_pos_x,
+                    moustache_pos_y,
+                )
+                pixel_points = [to_pixel(pt) for pt in moustache]
+                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        if "lips_lower" in face_points:
-            lips_lower = transform_polygon(
-                face_points["lips_lower"],
-                lips_lower_size_x,
-                lips_lower_size_y,
-                0.0,
-                0.0,
+        # Draw chin with scaling and positioning
+        if "chin" in face_points:
+            chin = transform_polygon(
+                face_points["chin"],
+                chin_size_x,
+                chin_size_y,
+                chin_pos_x,
+                chin_pos_y,
             )
-            pixel_points = [to_pixel(pt) for pt in lips_lower]
+            pixel_points = [to_pixel(pt) for pt in chin]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw eyebrows with translation
@@ -575,6 +619,11 @@ class ComfyUIFaceShaper:
                 nose_aler_right_pos_y,
             )
             pixel_points = [to_pixel(pt) for pt in nose_aler_right]
+            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+
+        # Draw nose tip (static, connects nose parts)
+        if "nose_tip" in face_points:
+            pixel_points = [to_pixel(pt) for pt in face_points["nose_tip"]]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw cheeks (static, for reference)
