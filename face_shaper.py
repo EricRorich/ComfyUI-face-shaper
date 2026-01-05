@@ -303,7 +303,9 @@ class ComfyUIFaceShaper:
             offset_x: float,
             offset_y: float,
         ) -> List[Tuple[float, float]]:
-            # Feature point counts are tiny; simple means avoid extra numpy overhead.
+            # Feature point counts are tiny; simple mean math avoids extra numpy overhead.
+            if not points:
+                return []
             cx = sum(px for px, _ in points) / len(points)
             cy = sum(py for _, py in points) / len(points)
             transformed = []
@@ -337,6 +339,7 @@ class ComfyUIFaceShaper:
             cx_rel = base_center[0] + iris_pos_x
             cy_rel = base_center[1] + iris_pos_y
             cx, cy = to_pixel((cx_rel, cy_rel))
+            # Use the smaller canvas dimension so the circular iris stays round across aspect ratios.
             radius_px = (
                 base_radius * iris_size * min(canvas_width, canvas_height) * camera_distance
             )
