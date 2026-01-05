@@ -104,6 +104,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.459189, 0.749262),
         (0.5, 0.764153),
     ],
+    # SVG-derived data; repeated points are preserved from the source polyline.
     "mouth_bottom_right": [
         (0.499984, 0.762932),
         (0.541349, 0.750634),
