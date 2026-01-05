@@ -1,18 +1,21 @@
 # ComfyUI-face-shaper
 
-A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline, eyes, irises, eyebrows, nose parts, lips, chin, and cheeks. All coordinates are derived from an SVG face mask template with normalized [0-1] relative positioning.
+A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline, eyes, irises, eyebrows, nose (single merged object), lips (upper and lower with direction-specific scaling), chin, and cheeks. All coordinates are derived from an SVG face mask template with normalized [0-1] relative positioning.
 
 ## Features
 
-- **21 distinct facial features** extracted from Face_Mask_female.svg (1024×1024)
+- **Updated facial features** extracted from Face_Mask_female.svg (1024×1024)
 - **Transparent background option**: Choose between black lines on white background (default) or black lines on transparent background (RGBA output)
 - **Outer head outline**: Full face contour with independent scaling (no positioning controls)
-- **Lips controls**: 4 separate lips shapes (upper/lower, left/right) with unified size and y-position controls
+- **Advanced lips controls**: Upper and lower lips with independent y-scaling that keeps the mouth midline anchored
+  - Shared horizontal scaling and y-position
+  - Upper lip scales upward (toward top of image)
+  - Lower lip scales downward (toward bottom of image)
+- **Simplified nose controls**: Single merged nose object with position and size controls (no more separate bridge/sidewall/alae controls)
 - **Chin polygon**: Dedicated chin shape with scaling only (no positioning controls)
 - **Separated iris controls**: Independent size and position controls for left and right irises
 - **Eye controls**: Scale and position each eye independently
 - **Eyebrow positioning**: Fine-tune left and right eyebrow positions
-- **Nose part positioning**: Adjust nose bridge, sidewalls, alae (nostril wings), and tip independently
 - **Canvas customization**: Configurable canvas size (256-2048px)
 - **Camera distance**: Global zoom control (0.5-2.0x)
 - **Line thickness**: Adjustable stroke width (0.5-10.0)
@@ -73,9 +76,10 @@ All parameters are exposed under the **required** section:
 ### Lips Controls
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `lips_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale lips width (applies to all 4 parts) |
-| `lips_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale lips height (applies to all 4 parts) |
-| `lips_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate lips vertically |
+| `lips_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate both lips vertically (shared) |
+| `lips_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale both lips horizontally (shared) |
+| `lip_upper_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale upper lip upward from mouth midline |
+| `lip_lower_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale lower lip downward from mouth midline |
 
 ### Chin Controls
 | Parameter | Type | Default | Range | Description |
@@ -94,18 +98,9 @@ All parameters are exposed under the **required** section:
 ### Nose Controls
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `nose_aler_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril alae horizontally |
-| `nose_aler_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left nostril alae vertically |
-| `nose_aler_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril alae horizontally |
-| `nose_aler_right_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate right nostril alae vertically |
-| `nose_sidewall_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left nose sidewall horizontally |
-| `nose_sidewall_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left nose sidewall vertically |
-| `nose_sidewall_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right nose sidewall horizontally |
-| `nose_sidewall_right_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate right nose sidewall vertically |
-| `nose_bridge_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left nose bridge horizontally |
-| `nose_bridge_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left nose bridge vertically |
-| `nose_bridge_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right nose bridge horizontally |
-| `nose_bridge_right_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate right nose bridge vertically |
+| `nose_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate nose vertically |
+| `nose_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale nose width |
+| `nose_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale nose height |
 
 ### Global Controls
 | Parameter | Type | Default | Range | Description |
@@ -136,9 +131,12 @@ This output can be used as:
    - Enable `transparent_background` for RGBA output with alpha channel
    - Increase `iris_left_size` and `iris_right_size` for larger irises
    - Adjust `eyebrow_left_pos_y` and `eyebrow_right_pos_y` to raise/lower eyebrows
-   - Scale `lips_size_x` and `lips_size_y` for different lips sizes
+   - Use `lips_size_x` to scale both lips horizontally together
+   - Use `lip_upper_size_y` to make the upper lip fuller (scales upward from mouth midline)
+   - Use `lip_lower_size_y` to adjust the lower lip (scales downward from mouth midline)
+   - Adjust `nose_pos_y`, `nose_size_x`, and `nose_size_y` for nose adjustments
    - Modify `outer_head_size_x` and `outer_head_size_y` for different head shapes
-   - Adjust `lips_pos_y` to move the lips up or down
+   - Adjust `lips_pos_y` to move both lips up or down together
 
 ## Coordinate System
 
@@ -165,19 +163,16 @@ All size parameters are multipliers:
 
 ## Facial Features Included
 
-The node renders 21 distinct SVG paths organized into feature groups:
+The node renders distinct SVG paths organized into feature groups:
 
 1. **Outer head** (20 points) - Full face outline contour with scaling only
 2. **Cheeks** (left: 4 points, right: 4 points) - Static cheek contours
 3. **Chin** (7 points) - Lower jaw polygon with scaling only
-4. **Lips** (4 shapes: upper-left, upper-right, lower-left, lower-right; 6 points each) - Mouth/lips area
+4. **Lips** (2 shapes: upper and lower; 10 points each) - Mouth/lips area with direction-specific scaling
 5. **Eyes** (left: 6 points, right: 6 points) - Eye outlines
 6. **Irises** (left: circle, right: circle) - Pupil/iris circles
 7. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves
-8. **Nose bridge** (left: 5 points, right: 5 points) - Upper nose lines
-9. **Nose sidewalls** (left: 3 points, right: 3 points) - Side of nose
-10. **Nose alae** (left: 6 points, right: 6 points) - Nostril wing areas
-11. **Nose tip** (4 points) - Nose bottom connector
+8. **Nose** (26 points) - Single merged nose object including bridge, sidewalls, alae, and tip
 
 ## Future Improvements
 
@@ -188,9 +183,21 @@ The node renders 21 distinct SVG paths organized into feature groups:
 
 ## Recent Changes
 
+### Version with Merged Nose and Split Lips (Latest)
+- **Nose**: Merged all nose parts (bridge, sidewalls, alae, tip) into a single object with simplified controls
+  - Removed 12 individual nose positioning parameters
+  - Added 3 new parameters: `nose_pos_y`, `nose_size_x`, `nose_size_y`
+- **Lips**: Split into upper and lower shapes with direction-specific scaling
+  - Removed old unified `lips_size_y` parameter
+  - Added `lip_upper_size_y` for scaling upper lip upward from mouth midline
+  - Added `lip_lower_size_y` for scaling lower lip downward from mouth midline
+  - Mouth midline stays anchored during independent upper/lower lip scaling
+  - Shared `lips_pos_y` and `lips_size_x` controls affect both lips together
+- Updated coordinates from latest SVG (270.93331 x 270.93331 viewBox)
+
 ### Version with Transparent Background and Lips Renaming
 - Added `transparent_background` boolean parameter to choose between white (RGB) or transparent (RGBA) background
-- Renamed "moustache" features to "lips" for more accurate naming (lips_upper_left, lips_upper_right, lips_lower_left, lips_lower_right)
+- Renamed "moustache" features to "lips" for more accurate naming
 - Removed `moustache_pos_x` parameter (only y-position control retained for lips)
 - Removed `outer_head_pos_x` and `outer_head_pos_y` parameters (scaling only)
 - Removed `chin_pos_x` and `chin_pos_y` parameters (scaling only)
