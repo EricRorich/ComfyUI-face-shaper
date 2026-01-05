@@ -1,3 +1,4 @@
+import copy
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -179,9 +180,9 @@ FEMALE_FACE_IRISES = {
     "iris_left": {"center": (0.3721897, 0.4281128), "radius": 0.0272003},
 }
 
-# TODO: replace with male-specific coordinates once available; currently reuses female data.
-MALE_FACE = FEMALE_FACE
-MALE_FACE_IRISES = FEMALE_FACE_IRISES
+# TODO: replace with male-specific coordinates once available; deep-copied to decouple future edits.
+MALE_FACE = copy.deepcopy(FEMALE_FACE)
+MALE_FACE_IRISES = copy.deepcopy(FEMALE_FACE_IRISES)
 
 
 class ComfyUIFaceShaper:
@@ -303,7 +304,7 @@ class ComfyUIFaceShaper:
             offset_x: float,
             offset_y: float,
         ) -> List[Tuple[float, float]]:
-            # Feature point counts are tiny; simple mean math avoids extra numpy overhead.
+            # Feature point counts are tiny; simple mean math avoids pulling numpy into this helper.
             if not points:
                 return []
             cx = sum(px for px, _ in points) / len(points)
