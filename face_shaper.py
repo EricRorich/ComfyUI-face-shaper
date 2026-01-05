@@ -2,16 +2,22 @@
 Refined implementation of the ComfyUI Face Shaper custom node.
 
 This module implements a custom node that draws a stylized facial mask based on
-SVG‑derived coordinates. Users can adjust the positions and sizes of the eyes
-and irises, select a gender preset (currently both genders use the same
-coordinates), change the canvas size and camera distance, and control the line
-thickness. The output is a black‑on‑white image tensor compatible with
+SVG‑derived coordinates extracted from Face_Mask_female.svg (1024×1024). Users 
+can adjust the positions and sizes of 21 distinct facial features including:
+outer head outline, eyes, irises, eyebrows, nose parts (bridge, sidewalls, aler, 
+tip), moustache (4 shapes), chin, and cheeks. All coordinates are normalized to 
+[0-1] range. Users can select a gender preset (currently both genders use the 
+same coordinates), change the canvas size and camera distance, and control the 
+line thickness. The output is a black‑on‑white image tensor compatible with
 ComfyUI workflows.
 
-Compared to the original `face_shaper.py`, this version registers the node
-with a hyphen‑free identifier in `NODE_CLASS_MAPPINGS` and provides a
-corresponding `__init__.py` for package registration. These changes ensure
-ComfyUI can discover and load the node correctly.
+Key improvements in this version:
+- All 21 paths extracted from the updated 1024×1024 SVG with accurate normalized coordinates
+- Integrated outer head outline and moustache/chin polygons into the drawing routine
+- Corrected jaw/mouth coordinates to match the SVG precisely
+- All position parameters default to 0.0 (zero offsets by default)
+- Per-feature scaling controls prevent distortion across unrelated features
+- Maintains proper node structure with CATEGORY="face", INPUT_TYPES, RETURN_TYPES=("IMAGE",)
 """
 
 from typing import Dict, List, Tuple
