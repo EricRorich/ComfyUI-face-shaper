@@ -5,19 +5,20 @@ This module implements a custom node that draws a stylized facial mask based on
 SVG‑derived coordinates extracted from Face_Mask_female.svg (1024×1024). Users 
 can adjust the positions and sizes of 21 distinct facial features including:
 outer head outline, eyes, irises, eyebrows, nose parts (bridge, sidewalls, alae/nostrils, 
-tip), moustache (4 shapes), chin, and cheeks. All coordinates are normalized to 
+tip), lips (4 shapes), chin, and cheeks. All coordinates are normalized to 
 [0-1] range. Users can select a gender preset (currently both genders use the 
 same coordinates), change the canvas size and camera distance, and control the 
-line thickness. The output is a black‑on‑white image tensor compatible with
-ComfyUI workflows.
+line thickness. The output is black lines on either a white or transparent background
+as a tensor compatible with ComfyUI workflows.
 
 Key improvements in this version:
 - All 21 paths extracted from the updated 1024×1024 SVG with accurate normalized coordinates
-- Integrated outer head outline and moustache/chin polygons into the drawing routine
+- Integrated outer head outline and lips/chin polygons into the drawing routine
 - Corrected jaw/mouth coordinates to match the SVG precisely
 - All position parameters default to 0.0 (zero offsets by default)
 - Per-feature scaling controls prevent distortion across unrelated features
 - Maintains proper node structure with CATEGORY="face", INPUT_TYPES, RETURN_TYPES=("IMAGE",)
+- Optional transparent background support for alpha-aware workflows
 """
 
 from typing import Dict, List, Tuple
@@ -75,8 +76,8 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.569026, 0.890426),
         (0.554594, 0.935787),
     ],
-    # Moustache shapes
-    "moustache_top_left": [
+    # Lips shapes
+    "lips_upper_left": [
         (0.499984, 0.762932),
         (0.458618, 0.750634),
         (0.442072, 0.754981),
@@ -84,7 +85,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.450345, 0.800273),
         (0.499984, 0.800273),
     ],
-    "moustache_top_right": [
+    "lips_upper_right": [
         (0.499984, 0.762932),
         (0.541349, 0.750634),
         (0.557895, 0.754981),
@@ -92,7 +93,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.549622, 0.800273),
         (0.499984, 0.800273),
     ],
-    "moustache_bottom_left": [
+    "lips_lower_left": [
         (0.500000, 0.736025),
         (0.475736, 0.726097),
         (0.391922, 0.753943),
@@ -100,7 +101,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.459189, 0.749262),
         (0.500000, 0.764153),
     ],
-    "moustache_bottom_right": [
+    "lips_lower_right": [
         (0.500000, 0.736025),
         (0.524265, 0.726097),
         (0.608079, 0.753943),
@@ -228,6 +229,7 @@ class ComfyUIFaceShaper:
                 "canvas_width": ("INT", {"default": 1024, "min": 256, "max": 2048}),
                 "canvas_height": ("INT", {"default": 1024, "min": 256, "max": 2048}),
                 "gender": (["female", "male"],),
+                "transparent_background": ("BOOLEAN", {"default": False}),
                 # Eyes
                 "eye_left_size_x": (
                     "FLOAT",
@@ -295,28 +297,16 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "outer_head_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "outer_head_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                # Moustache
-                "moustache_size_x": (
+                # Lips
+                "lips_size_x": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "moustache_size_y": (
+                "lips_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "moustache_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "moustache_pos_y": (
+                "lips_pos_y": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
@@ -328,14 +318,6 @@ class ComfyUIFaceShaper:
                 "chin_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "chin_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "chin_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
                 # Eyebrows
                 "eyebrow_left_pos_x": (
@@ -420,6 +402,7 @@ class ComfyUIFaceShaper:
         canvas_width: int,
         canvas_height: int,
         gender: str,
+        transparent_background: bool,
         eye_left_size_x: float,
         eye_left_size_y: float,
         eye_left_pos_x: float,
@@ -436,16 +419,11 @@ class ComfyUIFaceShaper:
         iris_right_pos_y: float,
         outer_head_size_x: float,
         outer_head_size_y: float,
-        outer_head_pos_x: float,
-        outer_head_pos_y: float,
-        moustache_size_x: float,
-        moustache_size_y: float,
-        moustache_pos_x: float,
-        moustache_pos_y: float,
+        lips_size_x: float,
+        lips_size_y: float,
+        lips_pos_y: float,
         chin_size_x: float,
         chin_size_y: float,
-        chin_pos_x: float,
-        chin_pos_y: float,
         eyebrow_left_pos_x: float,
         eyebrow_left_pos_y: float,
         eyebrow_right_pos_x: float,
@@ -469,8 +447,11 @@ class ComfyUIFaceShaper:
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
 
-        # Create a blank canvas filled with white.
-        img = Image.new("RGB", (canvas_width, canvas_height), "white")
+        # Create a blank canvas - RGBA for transparent background, RGB for white background.
+        if transparent_background:
+            img = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 0))
+        else:
+            img = Image.new("RGB", (canvas_width, canvas_height), "white")
         draw = ImageDraw.Draw(img)
         # Pillow expects integer stroke widths; round and enforce a minimum of 1 so lines stay visible.
         stroke_width = max(1, int(round(line_thickness)))
@@ -509,40 +490,40 @@ class ComfyUIFaceShaper:
         ) -> List[Tuple[float, float]]:
             return [(rx + offset_x, ry + offset_y) for rx, ry in points]
 
-        # Draw outer head outline with scaling and positioning
+        # Draw outer head outline with scaling only (no positioning)
         if "outer_head" in face_points:
             outer_head = transform_polygon(
                 face_points["outer_head"],
                 outer_head_size_x,
                 outer_head_size_y,
-                outer_head_pos_x,
-                outer_head_pos_y,
+                0.0,
+                0.0,
             )
             pixel_points = [to_pixel(pt) for pt in outer_head]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw moustache shapes (all 4 parts) with scaling and positioning
-        for moustache_part in ["moustache_top_left", "moustache_top_right",
-                               "moustache_bottom_left", "moustache_bottom_right"]:
-            if moustache_part in face_points:
-                moustache = transform_polygon(
-                    face_points[moustache_part],
-                    moustache_size_x,
-                    moustache_size_y,
-                    moustache_pos_x,
-                    moustache_pos_y,
+        # Draw lips shapes (all 4 parts) with scaling and y-positioning only
+        for lips_part in ["lips_upper_left", "lips_upper_right",
+                               "lips_lower_left", "lips_lower_right"]:
+            if lips_part in face_points:
+                lips = transform_polygon(
+                    face_points[lips_part],
+                    lips_size_x,
+                    lips_size_y,
+                    0.0,
+                    lips_pos_y,
                 )
-                pixel_points = [to_pixel(pt) for pt in moustache]
+                pixel_points = [to_pixel(pt) for pt in lips]
                 draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw chin with scaling and positioning
+        # Draw chin with scaling only (no positioning)
         if "chin" in face_points:
             chin = transform_polygon(
                 face_points["chin"],
                 chin_size_x,
                 chin_size_y,
-                chin_pos_x,
-                chin_pos_y,
+                0.0,
+                0.0,
             )
             pixel_points = [to_pixel(pt) for pt in chin]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
@@ -676,6 +657,9 @@ class ComfyUIFaceShaper:
         draw_iris_with_params("iris_left", iris_left_size, iris_left_pos_x, iris_left_pos_y)
 
         # Convert the PIL image to a tensor of shape [B, H, W, C] (B=1).
+        # The image is already in the correct format (RGB or RGBA) based on how it was created.
+        # For white background: RGB mode → 3 channels
+        # For transparent background: RGBA mode → 4 channels
         arr = np.array(img).astype(np.float32) / 255.0
         tensor = torch.from_numpy(arr).unsqueeze(0)
         return (tensor,)
