@@ -179,7 +179,7 @@ FEMALE_FACE_IRISES = {
     "iris_left": {"center": (0.3721897, 0.4281128), "radius": 0.0272003},
 }
 
-# Placeholder: male coordinates will be swapped in once available (tuples are immutable, so sharing is safe).
+# TODO: replace with male-specific coordinates once available; currently reuses female data.
 MALE_FACE = FEMALE_FACE
 MALE_FACE_IRISES = FEMALE_FACE_IRISES
 
@@ -275,7 +275,7 @@ class ComfyUIFaceShaper:
 
         img = Image.new("RGB", (canvas_width, canvas_height), "white")
         draw = ImageDraw.Draw(img)
-        # Pillow line/ellipse drawing uses integer stroke widths; round while enforcing a minimum.
+        # Pillow line/ellipse drawing uses integer stroke widths; round and enforce a minimum of 1 so lines stay visible.
         stroke_width = max(1, int(round(line_thickness)))
 
         def to_pixel(point: Tuple[float, float]) -> Tuple[float, float]:
@@ -303,8 +303,9 @@ class ComfyUIFaceShaper:
             offset_x: float,
             offset_y: float,
         ) -> List[Tuple[float, float]]:
-            # Feature point counts are tiny; use a simple mean for clarity.
-            cx, cy = np.array(points).mean(axis=0)
+            # Feature point counts are tiny; simple means avoid extra numpy overhead.
+            cx = sum(px for px, _ in points) / len(points)
+            cy = sum(py for _, py in points) / len(points)
             transformed = []
             for rx, ry in points:
                 dx = (rx - cx) * scale_x
