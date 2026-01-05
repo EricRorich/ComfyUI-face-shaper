@@ -3,18 +3,19 @@ Refined implementation of the ComfyUI Face Shaper custom node.
 
 This module implements a custom node that draws a stylized facial mask based on
 SVG‑derived coordinates extracted from Face_Mask_female.svg (1024×1024). Users 
-can adjust the positions and sizes of 21 distinct facial features including:
-outer head outline, eyes, irises, eyebrows, nose parts (bridge, sidewalls, alae/nostrils, 
-tip), lips (4 shapes), chin, and cheeks. All coordinates are normalized to 
-[0-1] range. Users can select a gender preset (currently both genders use the 
-same coordinates), change the canvas size and camera distance, and control the 
-line thickness. The output is black lines on either a white or transparent background
-as a tensor compatible with ComfyUI workflows.
+can adjust the positions and sizes of distinct facial features including:
+outer head outline, eyes, irises, eyebrows, nose (single merged object), 
+lips (upper and lower with direction-specific scaling), chin, and cheeks. 
+All coordinates are normalized to [0-1] range. Users can select a gender preset 
+(currently both genders use the same coordinates), change the canvas size and 
+camera distance, and control the line thickness. The output is black lines on 
+either a white or transparent background as a tensor compatible with ComfyUI workflows.
 
 Key improvements in this version:
-- All 21 paths extracted from the updated 1024×1024 SVG with accurate normalized coordinates
-- Integrated outer head outline and lips/chin polygons into the drawing routine
-- Corrected jaw/mouth coordinates to match the SVG precisely
+- Updated to use merged nose (single object) from latest SVG
+- Lips now split into upper and lower with independent y-scaling
+- Direction-specific lip scaling keeps mouth midline anchored
+- Nose simplified to 3 parameters: pos_y, size_x, size_y
 - All position parameters default to 0.0 (zero offsets by default)
 - Per-feature scaling controls prevent distortion across unrelated features
 - Maintains proper node structure with CATEGORY="face", INPUT_TYPES, RETURN_TYPES=("IMAGE",)
@@ -76,32 +77,24 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.569026, 0.890426),
         (0.554594, 0.935787),
     ],
-    # Lips shapes
-    "lips_upper_left": [
-        (0.499984, 0.762932),
-        (0.458618, 0.750634),
-        (0.442072, 0.754981),
-        (0.392433, 0.754258),
-        (0.450345, 0.800273),
-        (0.499984, 0.800273),
-    ],
-    "lips_upper_right": [
-        (0.499984, 0.762932),
+    # Lips - now split into upper and lower (single shapes each)
+    "lips_upper": [
         (0.541349, 0.750634),
         (0.557895, 0.754981),
         (0.607534, 0.754258),
         (0.549622, 0.800273),
         (0.499984, 0.800273),
+        (0.450345, 0.800273),
+        (0.392433, 0.754258),
+        (0.442072, 0.754981),
+        (0.458618, 0.750634),
+        (0.499984, 0.762932),
     ],
-    "lips_lower_left": [
-        (0.500000, 0.736025),
-        (0.475736, 0.726097),
-        (0.391922, 0.753943),
-        (0.444298, 0.754226),
+    "lips_lower": [
         (0.459189, 0.749262),
-        (0.500000, 0.764153),
-    ],
-    "lips_lower_right": [
+        (0.444298, 0.754226),
+        (0.391922, 0.753943),
+        (0.475736, 0.726097),
         (0.500000, 0.736025),
         (0.524265, 0.726097),
         (0.608079, 0.753943),
@@ -141,55 +134,34 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.278528, 0.361798),
         (0.414485, 0.406908),
     ],
-    # Nose bridge
-    "nose_bridge_right": [
-        (0.544149, 0.629847),
-        (0.525524, 0.579209),
-        (0.524094, 0.441927),
-        (0.546532, 0.412688),
-        (0.568969, 0.383450),
-    ],
-    "nose_bridge_left": [
-        (0.455851, 0.629847),
-        (0.474476, 0.579209),
-        (0.475906, 0.441927),
-        (0.453468, 0.412688),
-        (0.431031, 0.383450),
-    ],
-    # Nose sidewall
-    "nose_sidewall_right": [
-        (0.544149, 0.629847),
-        (0.541970, 0.465522),
-        (0.585515, 0.406908),
-    ],
-    "nose_sidewall_left": [
-        (0.455851, 0.629847),
-        (0.458030, 0.465522),
-        (0.414485, 0.406908),
-    ],
-    # Nose alae (nostrils/wings)
-    "nose_aler_right": [
-        (0.500000, 0.671066),
-        (0.550785, 0.636907),
-        (0.544459, 0.655884),
-        (0.569762, 0.648926),
-        (0.571659, 0.619195),
-        (0.544459, 0.542654),
-    ],
-    "nose_aler_left": [
+    # Nose - single merged object
+    "nose": [
         (0.500000, 0.671066),
         (0.449215, 0.636907),
         (0.455541, 0.655884),
         (0.430238, 0.648926),
         (0.428341, 0.619195),
         (0.455541, 0.542654),
-    ],
-    # Nose tip
-    "nose_tip": [
+        (0.500000, 0.671066),
+        (0.550785, 0.636907),
+        (0.544459, 0.655884),
+        (0.569762, 0.648926),
+        (0.571659, 0.619195),
+        (0.544459, 0.542654),
+        (0.544149, 0.629847),
+        (0.541970, 0.465522),
+        (0.455851, 0.629847),
+        (0.474476, 0.579209),
+        (0.475906, 0.441927),
+        (0.544149, 0.629847),
+        (0.525524, 0.579209),
+        (0.524094, 0.441927),
         (0.500000, 0.643776),
         (0.455851, 0.629847),
         (0.500000, 0.643776),
         (0.544149, 0.629847),
+        (0.455851, 0.629847),
+        (0.458030, 0.465522),
     ],
 }
 
@@ -297,18 +269,22 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                # Lips
+                # Lips (shared controls for both upper and lower)
+                "lips_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
                 "lips_size_x": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "lips_size_y": (
+                "lip_upper_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "lips_pos_y": (
+                "lip_lower_size_y": (
                     "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
                 # Chin
                 "chin_size_x": (
@@ -336,54 +312,18 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
-                # Nose parts
-                "nose_aler_left_pos_x": (
+                # Nose (single merged object)
+                "nose_pos_y": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
-                "nose_aler_left_pos_y": (
+                "nose_size_x": (
                     "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "nose_aler_right_pos_x": (
+                "nose_size_y": (
                     "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "nose_aler_right_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "nose_sidewall_left_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "nose_sidewall_left_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "nose_sidewall_right_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "nose_sidewall_right_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "nose_bridge_left_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "nose_bridge_left_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "nose_bridge_right_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "nose_bridge_right_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
                 # Global
                 "camera_distance": (
@@ -419,27 +359,19 @@ class ComfyUIFaceShaper:
         iris_right_pos_y: float,
         outer_head_size_x: float,
         outer_head_size_y: float,
-        lips_size_x: float,
-        lips_size_y: float,
         lips_pos_y: float,
+        lips_size_x: float,
+        lip_upper_size_y: float,
+        lip_lower_size_y: float,
         chin_size_x: float,
         chin_size_y: float,
         eyebrow_left_pos_x: float,
         eyebrow_left_pos_y: float,
         eyebrow_right_pos_x: float,
         eyebrow_right_pos_y: float,
-        nose_aler_left_pos_x: float,
-        nose_aler_left_pos_y: float,
-        nose_aler_right_pos_x: float,
-        nose_aler_right_pos_y: float,
-        nose_sidewall_left_pos_x: float,
-        nose_sidewall_left_pos_y: float,
-        nose_sidewall_right_pos_x: float,
-        nose_sidewall_right_pos_y: float,
-        nose_bridge_left_pos_x: float,
-        nose_bridge_left_pos_y: float,
-        nose_bridge_right_pos_x: float,
-        nose_bridge_right_pos_y: float,
+        nose_pos_y: float,
+        nose_size_x: float,
+        nose_size_y: float,
         camera_distance: float,
         line_thickness: float,
     ):
@@ -502,19 +434,49 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in outer_head]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw lips shapes (all 4 parts) with scaling and y-positioning only
-        for lips_part in ["lips_upper_left", "lips_upper_right",
-                               "lips_lower_left", "lips_lower_right"]:
-            if lips_part in face_points:
-                lips = transform_polygon(
-                    face_points[lips_part],
-                    lips_size_x,
-                    lips_size_y,
-                    0.0,
-                    lips_pos_y,
-                )
-                pixel_points = [to_pixel(pt) for pt in lips]
-                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+        # Draw lips (upper and lower) with direction-specific scaling
+        # Mouth midline is approximately at y = 0.757394
+        mouth_midline_y = 0.757394
+        
+        # Upper lip - scale upward (decreasing y, toward top of image)
+        if "lips_upper" in face_points:
+            lips_upper_scaled = []
+            for rx, ry in face_points["lips_upper"]:
+                # Apply horizontal scaling around center
+                cx = sum(px for px, _ in face_points["lips_upper"]) / len(face_points["lips_upper"])
+                dx = (rx - cx) * lips_size_x
+                new_x = cx + dx
+                
+                # Apply vertical scaling only in upward direction from midline
+                # Upper lip is above midline, so we scale away from midline (decreasing y)
+                dy_from_midline = ry - mouth_midline_y  # negative for upper lip
+                scaled_dy = dy_from_midline * lip_upper_size_y
+                new_y = mouth_midline_y + scaled_dy + lips_pos_y
+                
+                lips_upper_scaled.append((new_x, new_y))
+            
+            pixel_points = [to_pixel(pt) for pt in lips_upper_scaled]
+            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+        
+        # Lower lip - scale downward (increasing y, toward bottom of image)
+        if "lips_lower" in face_points:
+            lips_lower_scaled = []
+            for rx, ry in face_points["lips_lower"]:
+                # Apply horizontal scaling around center
+                cx = sum(px for px, _ in face_points["lips_lower"]) / len(face_points["lips_lower"])
+                dx = (rx - cx) * lips_size_x
+                new_x = cx + dx
+                
+                # Apply vertical scaling only in downward direction from midline
+                # Lower lip is below midline, so we scale away from midline (increasing y)
+                dy_from_midline = ry - mouth_midline_y  # positive for lower lip
+                scaled_dy = dy_from_midline * lip_lower_size_y
+                new_y = mouth_midline_y + scaled_dy + lips_pos_y
+                
+                lips_lower_scaled.append((new_x, new_y))
+            
+            pixel_points = [to_pixel(pt) for pt in lips_lower_scaled]
+            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw chin with scaling only (no positioning)
         if "chin" in face_points:
@@ -547,64 +509,16 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in eyebrow_right]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw nose parts with translation
-        if "nose_bridge_left" in face_points:
-            nose_bridge_left = translate_polygon(
-                face_points["nose_bridge_left"],
-                nose_bridge_left_pos_x,
-                nose_bridge_left_pos_y,
+        # Draw nose (single merged object) with scaling and y-positioning
+        if "nose" in face_points:
+            nose = transform_polygon(
+                face_points["nose"],
+                nose_size_x,
+                nose_size_y,
+                0.0,
+                nose_pos_y,
             )
-            pixel_points = [to_pixel(pt) for pt in nose_bridge_left]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-
-        if "nose_bridge_right" in face_points:
-            nose_bridge_right = translate_polygon(
-                face_points["nose_bridge_right"],
-                nose_bridge_right_pos_x,
-                nose_bridge_right_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in nose_bridge_right]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-
-        if "nose_sidewall_left" in face_points:
-            nose_sidewall_left = translate_polygon(
-                face_points["nose_sidewall_left"],
-                nose_sidewall_left_pos_x,
-                nose_sidewall_left_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in nose_sidewall_left]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-
-        if "nose_sidewall_right" in face_points:
-            nose_sidewall_right = translate_polygon(
-                face_points["nose_sidewall_right"],
-                nose_sidewall_right_pos_x,
-                nose_sidewall_right_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in nose_sidewall_right]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-
-        if "nose_aler_left" in face_points:
-            nose_aler_left = translate_polygon(
-                face_points["nose_aler_left"],
-                nose_aler_left_pos_x,
-                nose_aler_left_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in nose_aler_left]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-
-        if "nose_aler_right" in face_points:
-            nose_aler_right = translate_polygon(
-                face_points["nose_aler_right"],
-                nose_aler_right_pos_x,
-                nose_aler_right_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in nose_aler_right]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-
-        # Draw nose tip (static, connects nose parts)
-        if "nose_tip" in face_points:
-            pixel_points = [to_pixel(pt) for pt in face_points["nose_tip"]]
+            pixel_points = [to_pixel(pt) for pt in nose]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw cheeks (static, for reference)
