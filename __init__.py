@@ -1,13 +1,12 @@
 """
-Package initializer for the ComfyUI Face Shaper custom node.
+Updated package initializer for the ComfyUI Face Shaper custom node.
 
-This module registers the `ComfyUIFaceShaper` node with ComfyUI. When the
-`ComfyUI-face-shaper` directory is placed in ComfyUI’s `custom_nodes` folder,
-ComfyUI will import this `__init__.py`, discover the node mappings, and make
-the node available in the UI.
+This version adjusts the import to match the renamed module `face_shaper.py`.
+Place this file as `__init__.py` in your `ComfyUI-face-shaper` folder to
+register the node correctly.
 """
 
-from .face_shaper_fixed import ComfyUIFaceShaper
+from .face_shaper import ComfyUIFaceShaper
 
 # Mappings used by ComfyUI to locate and display the node.
 NODE_CLASS_MAPPINGS = {
