@@ -1,13 +1,14 @@
 # ComfyUI-face-shaper
 
-A custom ComfyUI node that draws a parametric facial mask with black lines on a white background. The node provides extensive control over individual facial features including outer head outline, eyes, irises, eyebrows, nose parts, moustache, chin, and cheeks. All coordinates are derived from an SVG face mask template with normalized [0-1] relative positioning.
+A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline, eyes, irises, eyebrows, nose parts, lips, chin, and cheeks. All coordinates are derived from an SVG face mask template with normalized [0-1] relative positioning.
 
 ## Features
 
 - **21 distinct facial features** extracted from Face_Mask_female.svg (1024×1024)
-- **Outer head outline**: Full face contour with independent scaling and positioning
-- **Moustache controls**: 4 separate moustache shapes (top/bottom, left/right) with unified size and position controls
-- **Chin polygon**: Dedicated chin shape with scaling and positioning
+- **Transparent background option**: Choose between black lines on white background (default) or black lines on transparent background (RGBA output)
+- **Outer head outline**: Full face contour with independent scaling (no positioning controls)
+- **Lips controls**: 4 separate lips shapes (upper/lower, left/right) with unified size and y-position controls
+- **Chin polygon**: Dedicated chin shape with scaling only (no positioning controls)
 - **Separated iris controls**: Independent size and position controls for left and right irises
 - **Eye controls**: Scale and position each eye independently
 - **Eyebrow positioning**: Fine-tune left and right eyebrow positions
@@ -39,6 +40,7 @@ All parameters are exposed under the **required** section:
 | `canvas_width` | INT | 1024 | 256–2048 | Output width in pixels |
 | `canvas_height` | INT | 1024 | 256–2048 | Output height in pixels |
 | `gender` | ENUM | `female` | `female`/`male` | Gender preset (male currently uses female data) |
+| `transparent_background` | BOOLEAN | `false` | `true`/`false` | Use transparent background instead of white |
 
 ### Eye Controls
 | Parameter | Type | Default | Range | Description |
@@ -67,24 +69,19 @@ All parameters are exposed under the **required** section:
 |-----------|------|---------|-------|-------------|
 | `outer_head_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale outer head width |
 | `outer_head_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale outer head height |
-| `outer_head_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate outer head horizontally |
-| `outer_head_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate outer head vertically |
 
-### Moustache Controls
+### Lips Controls
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `moustache_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale moustache width (applies to all 4 parts) |
-| `moustache_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale moustache height (applies to all 4 parts) |
-| `moustache_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate moustache horizontally |
-| `moustache_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate moustache vertically |
+| `lips_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale lips width (applies to all 4 parts) |
+| `lips_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale lips height (applies to all 4 parts) |
+| `lips_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate lips vertically |
 
 ### Chin Controls
 | Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
 | `chin_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale chin width |
 | `chin_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale chin height |
-| `chin_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate chin horizontally |
-| `chin_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate chin vertically |
 
 ### Eyebrow Controls
 | Parameter | Type | Default | Range | Description |
@@ -118,26 +115,30 @@ All parameters are exposed under the **required** section:
 
 ## Output
 
-The node outputs a single `IMAGE` tensor with shape `[1, H, W, 3]`, featuring:
-- **White background** (RGB 255, 255, 255)
-- **Black line drawings** (RGB 0, 0, 0)
+The node outputs a single `IMAGE` tensor with shape `[1, H, W, C]`, featuring:
+- **White or transparent background** (RGB 255,255,255 or RGBA 255,255,255,0 depending on `transparent_background` setting)
+- **Black line drawings** (RGB/RGBA 0,0,0 with full opacity)
 - **Float32 format** normalized to 0.0-1.0 range
+- **3 channels (RGB)** when `transparent_background` is false
+- **4 channels (RGBA)** when `transparent_background` is true
 
 This output can be used as:
 - Conditioning input for other nodes
 - Masking or guide images
 - Base for further image processing in ComfyUI workflows
+- Alpha-aware compositing when using transparent background
 
 ## Usage Example
 
 1. Add the **Face Shaper** node from the `face` category
 2. Connect the output to any node that accepts IMAGE tensors
 3. Adjust parameters to customize the facial features:
+   - Enable `transparent_background` for RGBA output with alpha channel
    - Increase `iris_left_size` and `iris_right_size` for larger irises
    - Adjust `eyebrow_left_pos_y` and `eyebrow_right_pos_y` to raise/lower eyebrows
-   - Scale `moustache_size_x` and `moustache_size_y` for different moustache sizes
+   - Scale `lips_size_x` and `lips_size_y` for different lips sizes
    - Modify `outer_head_size_x` and `outer_head_size_y` for different head shapes
-   - Adjust `chin_pos_y` to move the chin up or down
+   - Adjust `lips_pos_y` to move the lips up or down
 
 ## Coordinate System
 
@@ -166,10 +167,10 @@ All size parameters are multipliers:
 
 The node renders 21 distinct SVG paths organized into feature groups:
 
-1. **Outer head** (20 points) - Full face outline contour
+1. **Outer head** (20 points) - Full face outline contour with scaling only
 2. **Cheeks** (left: 4 points, right: 4 points) - Static cheek contours
-3. **Chin** (7 points) - Lower jaw polygon
-4. **Moustache** (4 shapes: top-left, top-right, bottom-left, bottom-right; 6 points each) - Upper lip/moustache area
+3. **Chin** (7 points) - Lower jaw polygon with scaling only
+4. **Lips** (4 shapes: upper-left, upper-right, lower-left, lower-right; 6 points each) - Mouth/lips area
 5. **Eyes** (left: 6 points, right: 6 points) - Eye outlines
 6. **Irises** (left: circle, right: circle) - Pupil/iris circles
 7. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves
@@ -182,9 +183,18 @@ The node renders 21 distinct SVG paths organized into feature groups:
 
 - [ ] Add dedicated male coordinate data (currently uses female coordinates for both genders)
 - [ ] Add more granular control over additional facial features
-- [ ] Support for custom color schemes (currently fixed to black on white)
 - [ ] Animation support with keyframe interpolation
 - [ ] Export/import custom face templates
+
+## Recent Changes
+
+### Version with Transparent Background and Lips Renaming
+- Added `transparent_background` boolean parameter to choose between white (RGB) or transparent (RGBA) background
+- Renamed "moustache" features to "lips" for more accurate naming (lips_upper_left, lips_upper_right, lips_lower_left, lips_lower_right)
+- Removed `moustache_pos_x` parameter (only y-position control retained for lips)
+- Removed `outer_head_pos_x` and `outer_head_pos_y` parameters (scaling only)
+- Removed `chin_pos_x` and `chin_pos_y` parameters (scaling only)
+- Simplified parameter set while maintaining essential controls for eyes, irises, eyebrows, and nose parts
 
 ## Requirements
 
