@@ -1,33 +1,9 @@
 # ComfyUI-face-shaper
 
-A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline (with separate jaw and forehead controls), eyes, irises, eyebrows, nose (single merged object), lips (upper and lower with direction-specific scaling), chin, and cheeks. All coordinates are derived from an SVG face mask template with normalized [0-1] relative positioning. The node is registered as **RORICH-AI** with display name **Face Shaper**.
+A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline (with separate jaw and forehead controls), eyes, irises, eyebrows, nose (single merged object), lips (upper and lower with direction-specific scaling), chin, and cheeks.
 
-## Features
-
-- **Node identifier**: Registered as `RORICH-AI` with display name "Face Shaper"
-- **Updated facial features** extracted from Face_Mask_female.svg (1024×1024)
-- **Closed polylines**: Outer head, eyes, and lips are closed shapes for proper rendering
-- **Transparent background option**: Choose between black lines on white background (default) or black lines on transparent background (RGBA output)
-- **Outer head outline**: Full face contour with independent scaling, plus separate jaw and forehead horizontal controls
-  - `jaw_size_x`: Controls jaw width (points with y > 0.7)
-  - `forehead_size_x`: Controls forehead width (points with y < 0.3)
-  - `outer_head_size_x`: Controls mid-face width (0.3 ≤ y ≤ 0.7)
-- **Cheek connections**: Cheeks are automatically connected to the outer head outline for a complete face contour
-- **Advanced lips controls**: Upper and lower lips with independent y-scaling that keeps the mouth midline anchored
-  - Shared horizontal scaling and y-position
-  - Upper lip scales upward (toward top of image)
-  - Lower lip scales downward (toward bottom of image)
-- **Updated nose controls**: Single merged nose object with 20 unique points from latest SVG, with position and size controls
-- **Chin polygon**: Dedicated chin shape with scaling only (no positioning controls)
-- **Separated iris controls**: Independent size and position controls for left and right irises
-- **Eye controls**: Scale and position each eye independently
-- **Eyebrow positioning**: Fine-tune left and right eyebrow positions
-- **Canvas customization**: Configurable canvas size (256-2048px)
-- **Camera distance**: Global zoom control (0.5-2.0x)
-- **Line thickness**: Adjustable stroke width (0.5-10.0)
-- **Gender presets**: Female and male options (currently both use female coordinates)
-- **Per-feature scaling**: Each feature group has its own scaling controls to prevent distortion
-- **Zero default offsets**: All position parameters default to 0.0 for neutral alignment
+![image alt](Images/ComfyUI_01467_.png)
+![image alt](Images/ComfyUI_01467_.png)
 
 ## Installation
 
@@ -192,40 +168,6 @@ The node renders distinct SVG paths organized into feature groups:
 - [ ] Animation support with keyframe interpolation
 - [ ] Export/import custom face templates
 
-## Recent Changes
-
-### Latest Update: RORICH-AI Node Identifier and Enhanced Controls
-- **Node identifier**: Changed from `ComfyUI-face-shaper` to `RORICH-AI` with display name "Face Shaper"
-- **Closed polylines**: Outer head, eyes (left and right), and lips (upper and lower) now explicitly close by repeating the first point at the end
-- **Updated nose geometry**: Replaced with 20 unique points from latest Face_Mask_female.svg (path46), removing duplicates for a continuous polyline
-- **Cheek connections**: Cheeks now connect to outer head outline with explicit line segments
-  - Left cheek connects from (0.316923, 0.729073) to (0.320690, 0.854875)
-  - Right cheek connects from (0.683077, 0.729073) to (0.679310, 0.854875)
-- **New jaw and forehead controls**: Added `jaw_size_x` and `forehead_size_x` parameters
-  - `jaw_size_x` controls horizontal scaling for jaw region (y > 0.7)
-  - `forehead_size_x` controls horizontal scaling for forehead region (y < 0.3)
-  - `outer_head_size_x` now controls mid-face region (0.3 ≤ y ≤ 0.7)
-- All parameters maintain backward compatibility with default values of 1.0
-
-### Version with Merged Nose and Split Lips
-- **Nose**: Merged all nose parts (bridge, sidewalls, alae, tip) into a single object with simplified controls
-  - Removed 12 individual nose positioning parameters
-  - Added 3 new parameters: `nose_pos_y`, `nose_size_x`, `nose_size_y`
-- **Lips**: Split into upper and lower shapes with direction-specific scaling
-  - Removed old unified `lips_size_y` parameter
-  - Added `lip_upper_size_y` for scaling upper lip upward from mouth midline
-  - Added `lip_lower_size_y` for scaling lower lip downward from mouth midline
-  - Mouth midline stays anchored during independent upper/lower lip scaling
-  - Shared `lips_pos_y` and `lips_size_x` controls affect both lips together
-- Updated coordinates from latest SVG (270.93331 x 270.93331 viewBox)
-
-### Version with Transparent Background and Lips Renaming
-- Added `transparent_background` boolean parameter to choose between white (RGB) or transparent (RGBA) background
-- Renamed "moustache" features to "lips" for more accurate naming
-- Removed `moustache_pos_x` parameter (only y-position control retained for lips)
-- Removed `outer_head_pos_x` and `outer_head_pos_y` parameters (scaling only)
-- Removed `chin_pos_x` and `chin_pos_y` parameters (scaling only)
-- Simplified parameter set while maintaining essential controls for eyes, irises, eyebrows, and nose parts
 
 ## Requirements
 
