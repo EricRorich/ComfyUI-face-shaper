@@ -140,7 +140,7 @@ All size parameters are multipliers:
 ## Technical Details
 
 - **Coordinate extraction**: All paths extracted from Face_Mask_female.svg (1024×1024) with coordinates normalized to [0-1] range
-- **Recent coordinate updates**: Nose geometry updated to 22 points (from path46), lips naming corrected to match visual positions
+- **Recent coordinate updates**: Nose geometry updated to 11 points (from path46), lips naming corrected to match visual positions
 - **Coordinate transform**: Relative coordinates (0-1 range) are converted to pixel coordinates using: 
   - `x = (rx - 0.5) * canvas_width * camera_distance + canvas_width / 2`
   - `y = (ry - 0.5) * canvas_height * camera_distance + canvas_height / 2`
@@ -159,7 +159,7 @@ The node renders distinct SVG paths organized into feature groups:
 5. **Eyes** (left: 7 points closed, right: 7 points closed) - Eye outlines
 6. **Irises** (left: circle, right: circle) - Pupil/iris circles
 7. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves
-8. **Nose** (20 unique points) - Single merged nose object updated from latest SVG
+8. **Nose** (11 points) - Single merged nose object updated from latest SVG
 
 ## Future Improvements
 
