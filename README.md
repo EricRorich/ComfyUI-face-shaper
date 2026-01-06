@@ -166,7 +166,7 @@ All size parameters are multipliers:
 
 The node renders distinct SVG paths organized into feature groups:
 
-1. **Outer head** (20 points) - Full face outline contour with scaling only
+1. **Outer head** (19 points) - Full face outline contour with scaling only
 2. **Cheeks** (left: 4 points, right: 4 points) - Static cheek contours
 3. **Chin** (7 points) - Lower jaw polygon with scaling only
 4. **Lips** (2 shapes: upper and lower; upper: 10 points, lower: 12 points) - Mouth/lips area with direction-specific scaling
@@ -184,7 +184,15 @@ The node renders distinct SVG paths organized into feature groups:
 
 ## Recent Changes
 
-### Latest Update: SVG Coordinate Refresh and Lip Naming Fix
+### Latest Update: Fixed Outer Head Rendering
+- **Outer head coordinates corrected**: Fixed incomplete line rendering issue
+  - Removed extra point that was causing rendering artifacts
+  - Corrected left-side coordinates (points 10-18) to match SVG exactly
+  - Point count reduced from 20 to 19 to match source SVG
+  - Face outline now renders completely with proper symmetry
+- All facial features verified to match Face_Mask_female.svg (1024×1024) exactly
+
+### Previous Update: SVG Coordinate Refresh and Lip Naming Fix
 - **Nose geometry**: Updated to latest SVG path (22 points, refined shape)
 - **Lip naming corrected**: Fixed naming mismatch where upper and lower lip data were swapped
   - `lips_upper` now correctly maps to the visual upper lip (smaller y values)
