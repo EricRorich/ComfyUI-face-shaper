@@ -3,7 +3,7 @@
 A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline (with separate jaw and forehead controls), eyes, irises, eyebrows, nose (single merged object), lips (upper and lower with direction-specific scaling), chin, and cheeks.
 
 ![image alt](Images/ComfyUI_01467_.png)
-![image alt](Images/ComfyUI_01467_.png)
+![image alt](Images/Screenshot 2026-01-06 182610.png)
 
 ## Installation
 
