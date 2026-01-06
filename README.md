@@ -184,7 +184,7 @@ The node renders distinct SVG paths organized into feature groups:
 
 ## Recent Changes
 
-### Latest Update: Fixed Outer Head Rendering (January 2026)
+### Latest Update: Fixed Outer Head Rendering
 - **Outer head coordinates corrected**: Fixed incomplete line rendering issue
   - Removed extra point that was causing rendering artifacts
   - Corrected left-side coordinates (points 10-18) to match SVG exactly
