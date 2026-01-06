@@ -10,10 +10,10 @@ from .face_shaper import ComfyUIFaceShaper
 
 # Mappings used by ComfyUI to locate and display the node.
 NODE_CLASS_MAPPINGS = {
-    "ComfyUI-face-shaper": ComfyUIFaceShaper,
+    "RORICH-AI": ComfyUIFaceShaper,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ComfyUI-face-shaper": "Face Shaper",
+    "RORICH-AI": "Face Shaper",
 }
 
 __all__ = [

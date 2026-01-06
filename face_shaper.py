@@ -53,6 +53,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.320690, 0.854875),
         (0.428240, 0.935952),
         (0.500000, 0.935174),
+        (0.571760, 0.935952),  # Close the polyline
     ],
     # Cheeks
     "cheek_right": [
@@ -91,6 +92,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.555702, 0.754226),
         (0.540811, 0.749262),
         (0.500000, 0.764153),
+        (0.459189, 0.749262),  # Close the polyline
     ],
     "lips_lower": [
         (0.458618, 0.750634),
@@ -105,6 +107,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.557928, 0.754981),
         (0.541382, 0.750634),
         (0.500001, 0.762932),
+        (0.458618, 0.750634),  # Close the polyline
     ],
     # Eyes
     "eye_right": [
@@ -114,6 +117,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.695229, 0.412257),
         (0.653864, 0.400148),
         (0.587679, 0.449786),
+        (0.653864, 0.474606),  # Close the polyline
     ],
     "eye_left": [
         (0.288225, 0.433240),
@@ -122,6 +126,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.412321, 0.449786),
         (0.346136, 0.400148),
         (0.304771, 0.412257),
+        (0.288225, 0.433240),  # Close the polyline
     ],
     # Eyebrows
     "eyebrow_right": [
@@ -138,7 +143,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.278528, 0.361798),
         (0.414485, 0.406908),
     ],
-    # Nose - single merged object (updated from SVG path46, 22 points)
+    # Nose - single merged object (updated from SVG path46, 20 unique points)
     "nose": [
         (0.455541, 0.542654),
         (0.428341, 0.619195),
@@ -158,9 +163,7 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.474476, 0.579209),
         (0.455851, 0.629847),
         (0.500000, 0.643776),
-        (0.544149, 0.629847),
         (0.541970, 0.465522),
-        (0.455851, 0.629847),
         (0.458030, 0.465522),
     ],
 }
@@ -270,6 +273,14 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
+                "jaw_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "forehead_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
                 # Lips (shared controls for both upper and lower)
                 "lips_pos_y": (
                     "FLOAT",
@@ -360,6 +371,8 @@ class ComfyUIFaceShaper:
         iris_right_pos_y: float,
         outer_head_size_x: float,
         outer_head_size_y: float,
+        jaw_size_x: float,
+        forehead_size_x: float,
         lips_pos_y: float,
         lips_size_x: float,
         lip_upper_size_y: float,
@@ -423,15 +436,30 @@ class ComfyUIFaceShaper:
         ) -> List[Tuple[float, float]]:
             return [(rx + offset_x, ry + offset_y) for rx, ry in points]
 
-        # Draw outer head outline with scaling only (no positioning)
+        # Draw outer head outline with per-region horizontal scaling
         if "outer_head" in face_points:
-            outer_head = transform_polygon(
-                face_points["outer_head"],
-                outer_head_size_x,
-                outer_head_size_y,
-                0.0,
-                0.0,
-            )
+            # Calculate centroid for scaling
+            cx = sum(px for px, _ in face_points["outer_head"]) / len(face_points["outer_head"])
+            cy = sum(py for _, py in face_points["outer_head"]) / len(face_points["outer_head"])
+            
+            outer_head = []
+            for rx, ry in face_points["outer_head"]:
+                # Determine which horizontal scale to use based on y position
+                if ry > 0.7:
+                    # Jaw region (bottom)
+                    scale_x = jaw_size_x
+                elif ry < 0.3:
+                    # Forehead region (top)
+                    scale_x = forehead_size_x
+                else:
+                    # Mid region
+                    scale_x = outer_head_size_x
+                
+                # Apply scaling
+                dx = (rx - cx) * scale_x
+                dy = (ry - cy) * outer_head_size_y
+                outer_head.append((cx + dx, cy + dy))
+            
             pixel_points = [to_pixel(pt) for pt in outer_head]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
@@ -522,14 +550,22 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in nose]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw cheeks (static, for reference)
+        # Draw cheeks and connect them to outer head
         if "cheek_left" in face_points:
             pixel_points = [to_pixel(pt) for pt in face_points["cheek_left"]]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+            # Connect cheek_left last point to outer head point
+            cheek_left_end = to_pixel((0.316923, 0.729073))
+            outer_head_point = to_pixel((0.320690, 0.854875))
+            draw.line([cheek_left_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
 
         if "cheek_right" in face_points:
             pixel_points = [to_pixel(pt) for pt in face_points["cheek_right"]]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+            # Connect cheek_right last point to outer head point
+            cheek_right_end = to_pixel((0.683077, 0.729073))
+            outer_head_point = to_pixel((0.679310, 0.854875))
+            draw.line([cheek_right_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
 
         # Transform and draw both eyes.
         eye_right = transform_polygon(
@@ -585,9 +621,9 @@ class ComfyUIFaceShaper:
 # identifiers are valid Python identifiers, which improves compatibility with
 # ComfyUI’s loading mechanism.
 NODE_CLASS_MAPPINGS = {
-    "ComfyUI-face-shaper": ComfyUIFaceShaper,
+    "RORICH-AI": ComfyUIFaceShaper,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ComfyUI-face-shaper": "Face Shaper",
+    "RORICH-AI": "Face Shaper",
 }
