@@ -28,6 +28,7 @@ Key improvements in this version:
 """
 
 from typing import Dict, List, Tuple
+import math
 
 import numpy as np
 import torch
@@ -173,6 +174,9 @@ FEMALE_FACE_IRISES = {
     "iris_right": {"center": (0.6278103272, 0.4281127706), "radius": 0.0272003099},
     "iris_left": {"center": (0.3721897466, 0.4281127706), "radius": 0.0272003099},
 }
+
+# Number of parameters in settings_list (for import/export functionality)
+SETTINGS_LIST_LENGTH = 47
 
 def _face_data_for_gender(gender: str):
     """Return the polyline coordinates for the requested gender preset."""
@@ -454,7 +458,7 @@ class ComfyUIFaceShaper:
     ):
         """Render the facial mask image and return it as a tensor."""
         # Handle settings_list import: override all adjustable parameters if provided
-        if settings_list is not None and len(settings_list) >= 47:
+        if settings_list is not None and len(settings_list) >= SETTINGS_LIST_LENGTH:
             eye_left_size_x = settings_list[0]
             eye_left_size_y = settings_list[1]
             eye_left_pos_x = settings_list[2]
@@ -559,7 +563,6 @@ class ComfyUIFaceShaper:
             """Rotate points around (cx, cy) by angle_degrees using 2D rotation."""
             if angle_degrees == 0.0:
                 return points
-            import math
             angle_rad = math.radians(angle_degrees)
             cos_a = math.cos(angle_rad)
             sin_a = math.sin(angle_rad)
