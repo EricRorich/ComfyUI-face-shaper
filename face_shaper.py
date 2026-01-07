@@ -440,7 +440,7 @@ class ComfyUIFaceShaper:
             line_thickness = 2.0
         
         # Handle settings_list import: override all adjustable parameters if provided
-        if settings_list is not None and len(settings_list) == 37:
+        if settings_list is not None and len(settings_list) >= 35:
             eye_left_size_x = settings_list[0]
             eye_left_size_y = settings_list[1]
             eye_left_pos_x = settings_list[2]
@@ -476,7 +476,8 @@ class ComfyUIFaceShaper:
             camera_pos_x = settings_list[32]
             camera_pos_y = settings_list[33]
             line_thickness = settings_list[34]
-            # Note: settings_list[35] and [36] are reserved for future canvas_width/canvas_height if needed
+            # Note: canvas_width/canvas_height (indices 35-36) are exported but not imported
+            # as they are always provided as direct parameters to the method
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
