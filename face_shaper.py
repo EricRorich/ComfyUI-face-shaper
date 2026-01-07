@@ -18,7 +18,10 @@ Key improvements in this version:
 - Nose simplified to 3 parameters: pos_y, size_x, size_y
 - All position parameters default to 0.0 (zero offsets by default)
 - Per-feature scaling controls prevent distortion across unrelated features
-- Maintains proper node structure with CATEGORY="face", INPUT_TYPES, RETURN_TYPES=("IMAGE",)
+- Camera translation controls (camera_pos_x, camera_pos_y) for panning the view
+- Reset defaults button to restore all parameters to default values
+- Settings export/import via LIST output and input for saving/loading configurations
+- Maintains proper node structure with CATEGORY="face", INPUT_TYPES, RETURN_TYPES=("IMAGE", "LIST")
 - Optional transparent background support for alpha-aware workflows
 """
 
