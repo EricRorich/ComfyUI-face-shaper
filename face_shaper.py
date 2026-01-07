@@ -19,8 +19,10 @@ Key improvements in this version:
 - All position parameters default to 0.0 (zero offsets by default)
 - Per-feature scaling controls prevent distortion across unrelated features
 - Camera translation controls (camera_pos_x, camera_pos_y) for panning the view
-- Reset defaults button to restore all parameters to default values
 - Settings export/import via LIST output and input for saving/loading configurations
+- Iris positions based on SVG viewBox coordinates for accurate defaults
+- Finer iris position controls (2x finer offsets)
+- Reset to defaults via client-side web extension button
 - Maintains proper node structure with CATEGORY="face", INPUT_TYPES, RETURN_TYPES=("IMAGE", "LIST")
 - Optional transparent background support for alpha-aware workflows
 """
@@ -163,12 +165,13 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
 }
 
 # Iris data is kept separate because irises are drawn as circles.
-# Extracted from Face_Mask_female.svg (circles converted to center+radius)
-# Updated with correct radius values from the SVG
-# Corrected iris centers to align properly with eye positions
+# Extracted from Face_Mask_female.svg (1024x1024 file using viewBox 270.93331x270.93331)
+# Normalized using SVG viewBox coordinates:
+# - Right iris: cx=170.09473, cy=115.99001, r=7.36947 → normalized by viewBox dimensions
+# - Left iris: cx=100.8386, cy=115.99001, r=7.36947 → normalized by viewBox dimensions
 FEMALE_FACE_IRISES = {
-    "iris_right": {"center": (0.6710425, 0.4366372), "radius": 0.0272003},
-    "iris_left": {"center": (0.3289575, 0.4366372), "radius": 0.0272003},
+    "iris_right": {"center": (0.6278103272, 0.4281127706), "radius": 0.0272003099},
+    "iris_left": {"center": (0.3721897466, 0.4281127706), "radius": 0.0272003099},
 }
 
 def _face_data_for_gender(gender: str):
@@ -241,11 +244,11 @@ class ComfyUIFaceShaper:
                 ),
                 "iris_left_pos_x": (
                     "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                    {"default": 0.0, "min": -0.25, "max": 0.25, "step": 0.005},
                 ),
                 "iris_left_pos_y": (
                     "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                    {"default": 0.0, "min": -0.25, "max": 0.25, "step": 0.005},
                 ),
                 "iris_right_size": (
                     "FLOAT",
@@ -253,11 +256,11 @@ class ComfyUIFaceShaper:
                 ),
                 "iris_right_pos_x": (
                     "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                    {"default": 0.0, "min": -0.25, "max": 0.25, "step": 0.005},
                 ),
                 "iris_right_pos_y": (
                     "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                    {"default": 0.0, "min": -0.25, "max": 0.25, "step": 0.005},
                 ),
                 # Outer head outline
                 "outer_head_size_x": (
@@ -349,10 +352,6 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 2.0, "min": 0.5, "max": 10.0, "step": 0.1},
                 ),
-                "reset_defaults": (
-                    "BOOLEAN",
-                    {"default": False},
-                ),
             },
             "optional": {
                 "settings_list": ("LIST", {"default": None}),
@@ -400,48 +399,9 @@ class ComfyUIFaceShaper:
         camera_pos_x: float,
         camera_pos_y: float,
         line_thickness: float,
-        reset_defaults: bool,
         settings_list=None,
     ):
         """Render the facial mask image and return it as a tensor."""
-        # Handle reset_defaults: reset all adjustable parameters to their INPUT_TYPES defaults
-        if reset_defaults:
-            eye_left_size_x = 1.0
-            eye_left_size_y = 1.0
-            eye_left_pos_x = 0.0
-            eye_left_pos_y = 0.0
-            eye_right_size_x = 1.0
-            eye_right_size_y = 1.0
-            eye_right_pos_x = 0.0
-            eye_right_pos_y = 0.0
-            iris_left_size = 1.0
-            iris_left_pos_x = 0.0
-            iris_left_pos_y = 0.0
-            iris_right_size = 1.0
-            iris_right_pos_x = 0.0
-            iris_right_pos_y = 0.0
-            outer_head_size_x = 1.0
-            outer_head_size_y = 1.0
-            jaw_size_x = 1.0
-            forehead_size_x = 1.0
-            lips_pos_y = 0.0
-            lips_size_x = 1.0
-            lip_upper_size_y = 1.0
-            lip_lower_size_y = 1.0
-            chin_size_x = 1.0
-            chin_size_y = 1.0
-            eyebrow_left_pos_x = 0.0
-            eyebrow_left_pos_y = 0.0
-            eyebrow_right_pos_x = 0.0
-            eyebrow_right_pos_y = 0.0
-            nose_pos_y = 0.0
-            nose_size_x = 1.0
-            nose_size_y = 1.0
-            camera_distance = 1.0
-            camera_pos_x = 0.0
-            camera_pos_y = 0.0
-            line_thickness = 2.0
-        
         # Handle settings_list import: override all adjustable parameters if provided
         if settings_list is not None and len(settings_list) >= 35:
             eye_left_size_x = settings_list[0]
@@ -681,8 +641,9 @@ class ComfyUIFaceShaper:
         def draw_iris_with_params(center_key: str, iris_size: float, iris_pos_x: float, iris_pos_y: float):
             base_center = iris_data[center_key]["center"]
             base_radius = iris_data[center_key]["radius"]
-            cx_rel = base_center[0] + iris_pos_x
-            cy_rel = base_center[1] + iris_pos_y
+            # Apply 0.5 multiplier to make iris position controls 2x finer
+            cx_rel = base_center[0] + (iris_pos_x * 0.5)
+            cy_rel = base_center[1] + (iris_pos_y * 0.5)
             cx, cy = to_pixel((cx_rel, cy_rel))
             # Use the smaller canvas dimension so the iris remains round across aspect ratios.
             radius_px = (

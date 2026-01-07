@@ -16,8 +16,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RORICH-AI": "Face Shaper",
 }
 
+# Export web directory for client-side extensions
+WEB_DIRECTORY = "./web/js"
+
 __all__ = [
     "NODE_CLASS_MAPPINGS",
     "NODE_DISPLAY_NAME_MAPPINGS",
+    "WEB_DIRECTORY",
     "ComfyUIFaceShaper",
 ]
