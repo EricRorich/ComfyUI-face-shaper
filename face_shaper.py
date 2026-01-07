@@ -162,9 +162,10 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
 # Iris data is kept separate because irises are drawn as circles.
 # Extracted from Face_Mask_female.svg (circles converted to center+radius)
 # Updated with correct radius values from the SVG
+# Corrected iris centers to align properly with eye positions
 FEMALE_FACE_IRISES = {
-    "iris_right": {"center": (0.627810, 0.428113), "radius": 0.0272003},
-    "iris_left": {"center": (0.372190, 0.428113), "radius": 0.0272003},
+    "iris_right": {"center": (0.6710425, 0.4366372), "radius": 0.0272003},
+    "iris_left": {"center": (0.3289575, 0.4366372), "radius": 0.0272003},
 }
 
 def _face_data_for_gender(gender: str):
@@ -185,7 +186,7 @@ class ComfyUIFaceShaper:
     """Custom node that draws a parametric facial mask."""
 
     CATEGORY = "face"
-    RETURN_TYPES = ("IMAGE",)
+    RETURN_TYPES = ("IMAGE", "LIST")
     FUNCTION = "draw_face"
 
     @classmethod
@@ -333,11 +334,26 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
+                "camera_pos_x": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "camera_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
                 "line_thickness": (
                     "FLOAT",
                     {"default": 2.0, "min": 0.5, "max": 10.0, "step": 0.1},
                 ),
-            }
+                "reset_defaults": (
+                    "BOOLEAN",
+                    {"default": False},
+                ),
+            },
+            "optional": {
+                "settings_list": ("LIST", {"default": None}),
+            },
         }
 
     def draw_face(
@@ -378,9 +394,90 @@ class ComfyUIFaceShaper:
         nose_size_x: float,
         nose_size_y: float,
         camera_distance: float,
+        camera_pos_x: float,
+        camera_pos_y: float,
         line_thickness: float,
+        reset_defaults: bool,
+        settings_list=None,
     ):
         """Render the facial mask image and return it as a tensor."""
+        # Handle reset_defaults: reset all adjustable parameters to their INPUT_TYPES defaults
+        if reset_defaults:
+            eye_left_size_x = 1.0
+            eye_left_size_y = 1.0
+            eye_left_pos_x = 0.0
+            eye_left_pos_y = 0.0
+            eye_right_size_x = 1.0
+            eye_right_size_y = 1.0
+            eye_right_pos_x = 0.0
+            eye_right_pos_y = 0.0
+            iris_left_size = 1.0
+            iris_left_pos_x = 0.0
+            iris_left_pos_y = 0.0
+            iris_right_size = 1.0
+            iris_right_pos_x = 0.0
+            iris_right_pos_y = 0.0
+            outer_head_size_x = 1.0
+            outer_head_size_y = 1.0
+            jaw_size_x = 1.0
+            forehead_size_x = 1.0
+            lips_pos_y = 0.0
+            lips_size_x = 1.0
+            lip_upper_size_y = 1.0
+            lip_lower_size_y = 1.0
+            chin_size_x = 1.0
+            chin_size_y = 1.0
+            eyebrow_left_pos_x = 0.0
+            eyebrow_left_pos_y = 0.0
+            eyebrow_right_pos_x = 0.0
+            eyebrow_right_pos_y = 0.0
+            nose_pos_y = 0.0
+            nose_size_x = 1.0
+            nose_size_y = 1.0
+            camera_distance = 1.0
+            camera_pos_x = 0.0
+            camera_pos_y = 0.0
+            line_thickness = 2.0
+        
+        # Handle settings_list import: override all adjustable parameters if provided
+        if settings_list is not None and len(settings_list) == 37:
+            eye_left_size_x = settings_list[0]
+            eye_left_size_y = settings_list[1]
+            eye_left_pos_x = settings_list[2]
+            eye_left_pos_y = settings_list[3]
+            eye_right_size_x = settings_list[4]
+            eye_right_size_y = settings_list[5]
+            eye_right_pos_x = settings_list[6]
+            eye_right_pos_y = settings_list[7]
+            iris_left_size = settings_list[8]
+            iris_left_pos_x = settings_list[9]
+            iris_left_pos_y = settings_list[10]
+            iris_right_size = settings_list[11]
+            iris_right_pos_x = settings_list[12]
+            iris_right_pos_y = settings_list[13]
+            outer_head_size_x = settings_list[14]
+            outer_head_size_y = settings_list[15]
+            jaw_size_x = settings_list[16]
+            forehead_size_x = settings_list[17]
+            lips_pos_y = settings_list[18]
+            lips_size_x = settings_list[19]
+            lip_upper_size_y = settings_list[20]
+            lip_lower_size_y = settings_list[21]
+            chin_size_x = settings_list[22]
+            chin_size_y = settings_list[23]
+            eyebrow_left_pos_x = settings_list[24]
+            eyebrow_left_pos_y = settings_list[25]
+            eyebrow_right_pos_x = settings_list[26]
+            eyebrow_right_pos_y = settings_list[27]
+            nose_pos_y = settings_list[28]
+            nose_size_x = settings_list[29]
+            nose_size_y = settings_list[30]
+            camera_distance = settings_list[31]
+            camera_pos_x = settings_list[32]
+            camera_pos_y = settings_list[33]
+            line_thickness = settings_list[34]
+            # Note: settings_list[35] and [36] are reserved for future canvas_width/canvas_height if needed
+        
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
 
@@ -396,8 +493,8 @@ class ComfyUIFaceShaper:
         def to_pixel(point: Tuple[float, float]) -> Tuple[float, float]:
             """Convert relative coordinates in range [0,1] to pixel positions."""
             rx, ry = point
-            x = (rx - 0.5) * canvas_width * camera_distance + canvas_width / 2.0
-            y = (ry - 0.5) * canvas_height * camera_distance + canvas_height / 2.0
+            x = (rx - 0.5 + camera_pos_x) * canvas_width * camera_distance + canvas_width / 2.0
+            y = (ry - 0.5 + camera_pos_y) * canvas_height * camera_distance + canvas_height / 2.0
             return (x, y)
 
         # Helper to scale and translate polygons.
@@ -604,7 +701,49 @@ class ComfyUIFaceShaper:
         # For transparent background: RGBA mode → 4 channels
         arr = np.array(img).astype(np.float32) / 255.0
         tensor = torch.from_numpy(arr).unsqueeze(0)
-        return (tensor,)
+        
+        # Create settings list with all adjustable parameters in consistent order
+        settings_export = [
+            eye_left_size_x,
+            eye_left_size_y,
+            eye_left_pos_x,
+            eye_left_pos_y,
+            eye_right_size_x,
+            eye_right_size_y,
+            eye_right_pos_x,
+            eye_right_pos_y,
+            iris_left_size,
+            iris_left_pos_x,
+            iris_left_pos_y,
+            iris_right_size,
+            iris_right_pos_x,
+            iris_right_pos_y,
+            outer_head_size_x,
+            outer_head_size_y,
+            jaw_size_x,
+            forehead_size_x,
+            lips_pos_y,
+            lips_size_x,
+            lip_upper_size_y,
+            lip_lower_size_y,
+            chin_size_x,
+            chin_size_y,
+            eyebrow_left_pos_x,
+            eyebrow_left_pos_y,
+            eyebrow_right_pos_x,
+            eyebrow_right_pos_y,
+            nose_pos_y,
+            nose_size_x,
+            nose_size_y,
+            camera_distance,
+            camera_pos_x,
+            camera_pos_y,
+            line_thickness,
+            canvas_width,
+            canvas_height,
+        ]
+        
+        return (tensor, settings_export)
 
 
 # Register the node with hyphen‑free identifiers. These mappings are used by
