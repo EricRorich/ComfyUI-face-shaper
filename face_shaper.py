@@ -741,7 +741,7 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in cheek_left]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
             # Connect cheek_left last point to outer head point
-            cheek_left_end = to_pixel((CHEEK_LEFT_END_POINT[0] + cheek_left_pos_x, 
+            cheek_left_end = to_pixel((CHEEK_LEFT_END_POINT[0] + cheek_left_pos_x,
                                        CHEEK_LEFT_END_POINT[1] + cheek_left_pos_y))
             outer_head_point = to_pixel(CHEEK_LEFT_OUTER_HEAD_POINT)
             draw.line([cheek_left_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
@@ -755,7 +755,7 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in cheek_right]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
             # Connect cheek_right last point to outer head point
-            cheek_right_end = to_pixel((CHEEK_RIGHT_END_POINT[0] + cheek_right_pos_x, 
+            cheek_right_end = to_pixel((CHEEK_RIGHT_END_POINT[0] + cheek_right_pos_x,
                                         CHEEK_RIGHT_END_POINT[1] + cheek_right_pos_y))
             outer_head_point = to_pixel(CHEEK_RIGHT_OUTER_HEAD_POINT)
             draw.line([cheek_right_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
