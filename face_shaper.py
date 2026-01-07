@@ -28,6 +28,7 @@ Key improvements in this version:
 """
 
 from typing import Dict, List, Tuple
+import math
 
 import numpy as np
 import torch
@@ -174,6 +175,15 @@ FEMALE_FACE_IRISES = {
     "iris_left": {"center": (0.3721897466, 0.4281127706), "radius": 0.0272003099},
 }
 
+# Number of parameters in settings_list (for import/export functionality)
+SETTINGS_LIST_LENGTH = 47
+
+# Cheek connection points (hardcoded from SVG coordinates)
+CHEEK_LEFT_END_POINT = (0.316923, 0.729073)
+CHEEK_LEFT_OUTER_HEAD_POINT = (0.320690, 0.854875)
+CHEEK_RIGHT_END_POINT = (0.683077, 0.729073)
+CHEEK_RIGHT_OUTER_HEAD_POINT = (0.679310, 0.854875)
+
 def _face_data_for_gender(gender: str):
     """Return the polyline coordinates for the requested gender preset."""
     # TODO: replace with male‑specific coordinates once available; currently both
@@ -305,7 +315,36 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
+                # Cheeks
+                "cheek_left_pos_x": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
+                ),
+                "cheek_left_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
+                ),
+                "cheek_right_pos_x": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
+                ),
+                "cheek_right_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
+                ),
                 # Eyebrows
+                "eyebrow_left_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "eyebrow_left_size_y": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "eyebrow_left_rotation": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
+                ),
                 "eyebrow_left_pos_x": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
@@ -313,6 +352,18 @@ class ComfyUIFaceShaper:
                 "eyebrow_left_pos_y": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "eyebrow_right_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "eyebrow_right_size_y": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "eyebrow_right_rotation": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
                 ),
                 "eyebrow_right_pos_x": (
                     "FLOAT",
@@ -388,8 +439,18 @@ class ComfyUIFaceShaper:
         lip_lower_size_y: float,
         chin_size_x: float,
         chin_size_y: float,
+        cheek_left_pos_x: float,
+        cheek_left_pos_y: float,
+        cheek_right_pos_x: float,
+        cheek_right_pos_y: float,
+        eyebrow_left_size_x: float,
+        eyebrow_left_size_y: float,
+        eyebrow_left_rotation: float,
         eyebrow_left_pos_x: float,
         eyebrow_left_pos_y: float,
+        eyebrow_right_size_x: float,
+        eyebrow_right_size_y: float,
+        eyebrow_right_rotation: float,
         eyebrow_right_pos_x: float,
         eyebrow_right_pos_y: float,
         nose_pos_y: float,
@@ -403,7 +464,7 @@ class ComfyUIFaceShaper:
     ):
         """Render the facial mask image and return it as a tensor."""
         # Handle settings_list import: override all adjustable parameters if provided
-        if settings_list is not None and len(settings_list) >= 35:
+        if settings_list is not None and len(settings_list) >= SETTINGS_LIST_LENGTH:
             eye_left_size_x = settings_list[0]
             eye_left_size_y = settings_list[1]
             eye_left_pos_x = settings_list[2]
@@ -428,18 +489,28 @@ class ComfyUIFaceShaper:
             lip_lower_size_y = settings_list[21]
             chin_size_x = settings_list[22]
             chin_size_y = settings_list[23]
-            eyebrow_left_pos_x = settings_list[24]
-            eyebrow_left_pos_y = settings_list[25]
-            eyebrow_right_pos_x = settings_list[26]
-            eyebrow_right_pos_y = settings_list[27]
-            nose_pos_y = settings_list[28]
-            nose_size_x = settings_list[29]
-            nose_size_y = settings_list[30]
-            camera_distance = settings_list[31]
-            camera_pos_x = settings_list[32]
-            camera_pos_y = settings_list[33]
-            line_thickness = settings_list[34]
-            # Note: canvas_width/canvas_height (indices 35-36) are exported but not imported
+            cheek_left_pos_x = settings_list[24]
+            cheek_left_pos_y = settings_list[25]
+            cheek_right_pos_x = settings_list[26]
+            cheek_right_pos_y = settings_list[27]
+            eyebrow_left_size_x = settings_list[28]
+            eyebrow_left_size_y = settings_list[29]
+            eyebrow_left_rotation = settings_list[30]
+            eyebrow_left_pos_x = settings_list[31]
+            eyebrow_left_pos_y = settings_list[32]
+            eyebrow_right_size_x = settings_list[33]
+            eyebrow_right_size_y = settings_list[34]
+            eyebrow_right_rotation = settings_list[35]
+            eyebrow_right_pos_x = settings_list[36]
+            eyebrow_right_pos_y = settings_list[37]
+            nose_pos_y = settings_list[38]
+            nose_size_x = settings_list[39]
+            nose_size_y = settings_list[40]
+            camera_distance = settings_list[41]
+            camera_pos_x = settings_list[42]
+            camera_pos_y = settings_list[43]
+            line_thickness = settings_list[44]
+            # Note: canvas_width/canvas_height (indices 45-46) are exported but not imported
             # as they are always provided as direct parameters to the method
         
         face_points = _face_data_for_gender(gender)
@@ -487,6 +558,58 @@ class ComfyUIFaceShaper:
             offset_y: float,
         ) -> List[Tuple[float, float]]:
             return [(rx + offset_x, ry + offset_y) for rx, ry in points]
+
+        # Helper to rotate points around a center by angle in degrees.
+        def rotate_polygon(
+            points: List[Tuple[float, float]],
+            angle_degrees: float,
+            cx: float,
+            cy: float,
+        ) -> List[Tuple[float, float]]:
+            """Rotate points around (cx, cy) by angle_degrees using 2D rotation."""
+            if angle_degrees == 0.0:
+                return points
+            angle_rad = math.radians(angle_degrees)
+            cos_a = math.cos(angle_rad)
+            sin_a = math.sin(angle_rad)
+            rotated = []
+            for rx, ry in points:
+                # Translate to origin
+                dx = rx - cx
+                dy = ry - cy
+                # Rotate
+                new_x = dx * cos_a - dy * sin_a
+                new_y = dx * sin_a + dy * cos_a
+                # Translate back
+                rotated.append((cx + new_x, cy + new_y))
+            return rotated
+
+        # Helper to transform eyebrow: scale → rotate → translate
+        def transform_eyebrow(
+            points: List[Tuple[float, float]],
+            size_x: float,
+            size_y: float,
+            rotation_degrees: float,
+            pos_x: float,
+            pos_y: float,
+        ) -> List[Tuple[float, float]]:
+            """Apply scale, rotation, and translation to eyebrow points."""
+            # Calculate centroid
+            cx = sum(px for px, _ in points) / len(points)
+            cy = sum(py for _, py in points) / len(points)
+            
+            # Step 1: Scale around centroid
+            scaled = []
+            for rx, ry in points:
+                dx = (rx - cx) * size_x
+                dy = (ry - cy) * size_y
+                scaled.append((cx + dx, cy + dy))
+            
+            # Step 2: Rotate around centroid
+            rotated = rotate_polygon(scaled, rotation_degrees, cx, cy)
+            
+            # Step 3: Apply positional offset
+            return translate_polygon(rotated, pos_x, pos_y)
 
         # Draw outer head outline with per-region horizontal scaling
         if "outer_head" in face_points:
@@ -571,10 +694,13 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in chin]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw eyebrows with translation
+        # Draw eyebrows with scale → rotation → translation transform order
         if "eyebrow_left" in face_points:
-            eyebrow_left = translate_polygon(
+            eyebrow_left = transform_eyebrow(
                 face_points["eyebrow_left"],
+                eyebrow_left_size_x,
+                eyebrow_left_size_y,
+                eyebrow_left_rotation,
                 eyebrow_left_pos_x,
                 eyebrow_left_pos_y,
             )
@@ -582,8 +708,11 @@ class ComfyUIFaceShaper:
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         if "eyebrow_right" in face_points:
-            eyebrow_right = translate_polygon(
+            eyebrow_right = transform_eyebrow(
                 face_points["eyebrow_right"],
+                eyebrow_right_size_x,
+                eyebrow_right_size_y,
+                eyebrow_right_rotation,
                 eyebrow_right_pos_x,
                 eyebrow_right_pos_y,
             )
@@ -602,21 +731,33 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in nose]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw cheeks and connect them to outer head
+        # Draw cheeks with position offsets and connect them to outer head
         if "cheek_left" in face_points:
-            pixel_points = [to_pixel(pt) for pt in face_points["cheek_left"]]
+            cheek_left = translate_polygon(
+                face_points["cheek_left"],
+                cheek_left_pos_x,
+                cheek_left_pos_y,
+            )
+            pixel_points = [to_pixel(pt) for pt in cheek_left]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
             # Connect cheek_left last point to outer head point
-            cheek_left_end = to_pixel((0.316923, 0.729073))
-            outer_head_point = to_pixel((0.320690, 0.854875))
+            cheek_left_end = to_pixel((CHEEK_LEFT_END_POINT[0] + cheek_left_pos_x,
+                                       CHEEK_LEFT_END_POINT[1] + cheek_left_pos_y))
+            outer_head_point = to_pixel(CHEEK_LEFT_OUTER_HEAD_POINT)
             draw.line([cheek_left_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
 
         if "cheek_right" in face_points:
-            pixel_points = [to_pixel(pt) for pt in face_points["cheek_right"]]
+            cheek_right = translate_polygon(
+                face_points["cheek_right"],
+                cheek_right_pos_x,
+                cheek_right_pos_y,
+            )
+            pixel_points = [to_pixel(pt) for pt in cheek_right]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
             # Connect cheek_right last point to outer head point
-            cheek_right_end = to_pixel((0.683077, 0.729073))
-            outer_head_point = to_pixel((0.679310, 0.854875))
+            cheek_right_end = to_pixel((CHEEK_RIGHT_END_POINT[0] + cheek_right_pos_x,
+                                        CHEEK_RIGHT_END_POINT[1] + cheek_right_pos_y))
+            outer_head_point = to_pixel(CHEEK_RIGHT_OUTER_HEAD_POINT)
             draw.line([cheek_right_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
 
         # Transform and draw both eyes.
@@ -693,8 +834,18 @@ class ComfyUIFaceShaper:
             lip_lower_size_y,
             chin_size_x,
             chin_size_y,
+            cheek_left_pos_x,
+            cheek_left_pos_y,
+            cheek_right_pos_x,
+            cheek_right_pos_y,
+            eyebrow_left_size_x,
+            eyebrow_left_size_y,
+            eyebrow_left_rotation,
             eyebrow_left_pos_x,
             eyebrow_left_pos_y,
+            eyebrow_right_size_x,
+            eyebrow_right_size_y,
+            eyebrow_right_rotation,
             eyebrow_right_pos_x,
             eyebrow_right_pos_y,
             nose_pos_y,
