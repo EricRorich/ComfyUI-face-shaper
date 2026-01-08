@@ -5,14 +5,17 @@ This module implements a custom node that draws a stylized facial mask based on
 SVG‑derived coordinates extracted from Face_Mask_female.svg (1024×1024). Users 
 can adjust the positions and sizes of distinct facial features including:
 outer head outline, eyes, irises, eyebrows, nose (single merged object), 
-lips (upper and lower with direction-specific scaling), chin, and cheeks. 
-All coordinates are normalized to [0-1] range. Users can select a gender preset 
-(currently both genders use the same coordinates), change the canvas size and 
-camera distance, and control the line thickness. The output is black lines on 
-either a white or transparent background as a tensor compatible with ComfyUI workflows.
+nose tip, ears (left and right), lips (upper and lower with direction-specific 
+scaling), chin, and cheeks. All coordinates are normalized to [0-1] range. 
+Users can select a gender preset (currently both genders use the same 
+coordinates), change the canvas size and camera distance, and control the line 
+thickness. The output is black lines on either a white or transparent background 
+as a tensor compatible with ComfyUI workflows.
 
 Key improvements in this version:
 - Updated to use merged nose (single object) from latest SVG
+- Added ear_left and ear_right geometry with independent position/size controls
+- Added nose_tip geometry with vertical position and size controls
 - Lips now split into upper and lower with independent y-scaling
 - Direction-specific lip scaling keeps mouth midline anchored
 - Nose simplified to 3 parameters: pos_y, size_x, size_y
@@ -163,6 +166,37 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.571659, 0.619195),
         (0.544459, 0.542654),
     ],
+    # Ears
+    "ear_right": [
+        (0.653864, 0.474606),
+        (0.723844, 0.449786),
+        (0.711775, 0.433240),
+        (0.695229, 0.412257),
+        (0.653864, 0.400148),
+        (0.587679, 0.449786),
+    ],
+    "ear_left": [
+        (0.288225, 0.433240),
+        (0.276156, 0.449786),
+        (0.346136, 0.474606),
+        (0.412321, 0.449786),
+        (0.346136, 0.400148),
+        (0.304771, 0.412257),
+    ],
+    # Nose tip
+    "nose_tip": [
+        (0.455541, 0.542654),
+        (0.428341, 0.619195),
+        (0.430238, 0.648926),
+        (0.455541, 0.655884),
+        (0.449215, 0.636907),
+        (0.500000, 0.671066),
+        (0.550785, 0.636907),
+        (0.544459, 0.655884),
+        (0.569762, 0.648926),
+        (0.571659, 0.619195),
+        (0.544459, 0.542654),
+    ],
 }
 
 # Iris data is kept separate because irises are drawn as circles.
@@ -176,7 +210,7 @@ FEMALE_FACE_IRISES = {
 }
 
 # Number of parameters in settings_list (for import/export functionality)
-SETTINGS_LIST_LENGTH = 47
+SETTINGS_LIST_LENGTH = 60  # Updated to include ears (8) + nose_tip (3) = 11 new params
 
 # Cheek connection points (hardcoded from SVG coordinates)
 CHEEK_LEFT_END_POINT = (0.316923, 0.729073)
@@ -332,6 +366,39 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
                 ),
+                # Ears (near cheeks/eyebrows)
+                "ear_left_pos_x": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
+                ),
+                "ear_left_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
+                ),
+                "ear_left_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "ear_left_size_y": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "ear_right_pos_x": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
+                ),
+                "ear_right_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
+                ),
+                "ear_right_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "ear_right_size_y": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
                 # Eyebrows
                 "eyebrow_left_size_x": (
                     "FLOAT",
@@ -383,6 +450,19 @@ class ComfyUIFaceShaper:
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
                 "nose_size_y": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                # Nose tip (near nose)
+                "nose_tip_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.2, "max": 0.2, "step": 0.005},
+                ),
+                "nose_tip_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "nose_tip_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
@@ -443,6 +523,14 @@ class ComfyUIFaceShaper:
         cheek_left_pos_y: float,
         cheek_right_pos_x: float,
         cheek_right_pos_y: float,
+        ear_left_pos_x: float,
+        ear_left_pos_y: float,
+        ear_left_size_x: float,
+        ear_left_size_y: float,
+        ear_right_pos_x: float,
+        ear_right_pos_y: float,
+        ear_right_size_x: float,
+        ear_right_size_y: float,
         eyebrow_left_size_x: float,
         eyebrow_left_size_y: float,
         eyebrow_left_rotation: float,
@@ -456,6 +544,9 @@ class ComfyUIFaceShaper:
         nose_pos_y: float,
         nose_size_x: float,
         nose_size_y: float,
+        nose_tip_pos_y: float,
+        nose_tip_size_x: float,
+        nose_tip_size_y: float,
         camera_distance: float,
         camera_pos_x: float,
         camera_pos_y: float,
@@ -493,24 +584,35 @@ class ComfyUIFaceShaper:
             cheek_left_pos_y = settings_list[25]
             cheek_right_pos_x = settings_list[26]
             cheek_right_pos_y = settings_list[27]
-            eyebrow_left_size_x = settings_list[28]
-            eyebrow_left_size_y = settings_list[29]
-            eyebrow_left_rotation = settings_list[30]
-            eyebrow_left_pos_x = settings_list[31]
-            eyebrow_left_pos_y = settings_list[32]
-            eyebrow_right_size_x = settings_list[33]
-            eyebrow_right_size_y = settings_list[34]
-            eyebrow_right_rotation = settings_list[35]
-            eyebrow_right_pos_x = settings_list[36]
-            eyebrow_right_pos_y = settings_list[37]
-            nose_pos_y = settings_list[38]
-            nose_size_x = settings_list[39]
-            nose_size_y = settings_list[40]
-            camera_distance = settings_list[41]
-            camera_pos_x = settings_list[42]
-            camera_pos_y = settings_list[43]
-            line_thickness = settings_list[44]
-            # Note: canvas_width/canvas_height (indices 45-46) are exported but not imported
+            ear_left_pos_x = settings_list[28]
+            ear_left_pos_y = settings_list[29]
+            ear_left_size_x = settings_list[30]
+            ear_left_size_y = settings_list[31]
+            ear_right_pos_x = settings_list[32]
+            ear_right_pos_y = settings_list[33]
+            ear_right_size_x = settings_list[34]
+            ear_right_size_y = settings_list[35]
+            eyebrow_left_size_x = settings_list[36]
+            eyebrow_left_size_y = settings_list[37]
+            eyebrow_left_rotation = settings_list[38]
+            eyebrow_left_pos_x = settings_list[39]
+            eyebrow_left_pos_y = settings_list[40]
+            eyebrow_right_size_x = settings_list[41]
+            eyebrow_right_size_y = settings_list[42]
+            eyebrow_right_rotation = settings_list[43]
+            eyebrow_right_pos_x = settings_list[44]
+            eyebrow_right_pos_y = settings_list[45]
+            nose_pos_y = settings_list[46]
+            nose_size_x = settings_list[47]
+            nose_size_y = settings_list[48]
+            nose_tip_pos_y = settings_list[49]
+            nose_tip_size_x = settings_list[50]
+            nose_tip_size_y = settings_list[51]
+            camera_distance = settings_list[52]
+            camera_pos_x = settings_list[53]
+            camera_pos_y = settings_list[54]
+            line_thickness = settings_list[55]
+            # Note: canvas_width/canvas_height (indices 56-57) are exported but not imported
             # as they are always provided as direct parameters to the method
         
         face_points = _face_data_for_gender(gender)
@@ -730,6 +832,41 @@ class ComfyUIFaceShaper:
             )
             pixel_points = [to_pixel(pt) for pt in nose]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+        
+        # Draw nose tip with scaling and y-positioning (no x-positioning, no rotation)
+        if "nose_tip" in face_points:
+            nose_tip = transform_polygon(
+                face_points["nose_tip"],
+                nose_tip_size_x,
+                nose_tip_size_y,
+                0.0,
+                nose_tip_pos_y,
+            )
+            pixel_points = [to_pixel(pt) for pt in nose_tip]
+            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+        
+        # Draw ears with scaling and positioning (no rotation)
+        if "ear_left" in face_points:
+            ear_left = transform_polygon(
+                face_points["ear_left"],
+                ear_left_size_x,
+                ear_left_size_y,
+                ear_left_pos_x,
+                ear_left_pos_y,
+            )
+            pixel_points = [to_pixel(pt) for pt in ear_left]
+            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+        
+        if "ear_right" in face_points:
+            ear_right = transform_polygon(
+                face_points["ear_right"],
+                ear_right_size_x,
+                ear_right_size_y,
+                ear_right_pos_x,
+                ear_right_pos_y,
+            )
+            pixel_points = [to_pixel(pt) for pt in ear_right]
+            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw cheeks with position offsets and connect them to outer head
         if "cheek_left" in face_points:
@@ -838,6 +975,14 @@ class ComfyUIFaceShaper:
             cheek_left_pos_y,
             cheek_right_pos_x,
             cheek_right_pos_y,
+            ear_left_pos_x,
+            ear_left_pos_y,
+            ear_left_size_x,
+            ear_left_size_y,
+            ear_right_pos_x,
+            ear_right_pos_y,
+            ear_right_size_x,
+            ear_right_size_y,
             eyebrow_left_size_x,
             eyebrow_left_size_y,
             eyebrow_left_rotation,
@@ -851,6 +996,9 @@ class ComfyUIFaceShaper:
             nose_pos_y,
             nose_size_x,
             nose_size_y,
+            nose_tip_pos_y,
+            nose_tip_size_x,
+            nose_tip_size_y,
             camera_distance,
             camera_pos_x,
             camera_pos_y,
