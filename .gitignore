@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+test_changes.py
+test_visual.py

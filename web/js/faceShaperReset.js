@@ -71,6 +71,7 @@ app.registerExtension({
                         "camera_distance": 1.0,
                         "camera_pos_x": 0.0,
                         "camera_pos_y": 0.0,
+                        "fov_mm": 80.0,
                         "line_thickness": 2.0,
                     };
                     
