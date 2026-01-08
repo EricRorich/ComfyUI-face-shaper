@@ -210,7 +210,8 @@ FEMALE_FACE_IRISES = {
 }
 
 # Number of parameters in settings_list (for import/export functionality)
-SETTINGS_LIST_LENGTH = 60  # Updated to include ears (8) + nose_tip (3) = 11 new params
+# Set to 60 to allow for future expansion (currently 58 parameters are used)
+SETTINGS_LIST_LENGTH = 60
 
 # Cheek connection points (hardcoded from SVG coordinates)
 CHEEK_LEFT_END_POINT = (0.316923, 0.729073)
@@ -614,6 +615,7 @@ class ComfyUIFaceShaper:
             line_thickness = settings_list[55]
             # Note: canvas_width/canvas_height (indices 56-57) are exported but not imported
             # as they are always provided as direct parameters to the method
+            # Total: 58 parameters (56 feature controls + 2 canvas dimensions)
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)

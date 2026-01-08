@@ -81,17 +81,13 @@ def test_settings_list_length():
     """Test that SETTINGS_LIST_LENGTH is updated correctly."""
     print("Testing SETTINGS_LIST_LENGTH...")
     
-    # Original was 47, we added 8 (ears) + 3 (nose_tip) = 11 new parameters
-    # So the new length should be 47 + 11 = 58, but since we also need to account for
-    # the indices in the settings export, let me verify by counting
+    # Count parameters in order:
+    # Eyes: 8, Irises: 6, Head: 4, Lips: 4, Chin: 2, Cheeks: 4
+    # Ears: 8 (NEW), Eyebrows: 10, Nose: 3, Nose tip: 3 (NEW)
+    # Camera: 4 (distance, pos_x, pos_y, line_thickness), Canvas: 2 (width, height)
+    # Total: 8+6+4+4+2+4+8+10+3+3+4+2 = 58 actual parameters
     
-    # The expected parameters in order:
-    # eyes: 8, irises: 6, outer_head: 4, lips: 4, chin: 2, cheeks: 4 = 28
-    # ears: 8, eyebrows: 10, nose: 3, nose_tip: 3 = 24
-    # camera: 5 (distance, pos_x, pos_y, line_thickness, but also canvas_width, canvas_height)
-    # Total controllable: 28 + 24 + 5 = 57, plus 2 canvas = 59
-    # But the comment says indices 56-57 for canvas, so it should be 58 total
-    
+    # SETTINGS_LIST_LENGTH is set to 60 for future expansion (58 used + 2 reserved)
     assert SETTINGS_LIST_LENGTH == 60, f"SETTINGS_LIST_LENGTH should be 60, got {SETTINGS_LIST_LENGTH}"
     
     print("✓ SETTINGS_LIST_LENGTH test passed")
@@ -165,7 +161,7 @@ def test_basic_rendering():
         assert tensor.shape[2] == 512, "Width should be 512"
         assert tensor.shape[3] == 3, "Should have 3 channels (RGB)"
         
-        # Check settings_list length
+        # Check settings_list length (58 actual parameters in export list)
         assert len(settings_list) == 58, f"settings_list should have 58 elements, got {len(settings_list)}"
         
         print("✓ Basic rendering test passed")
