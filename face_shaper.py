@@ -166,36 +166,28 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.571659, 0.619195),
         (0.544459, 0.542654),
     ],
-    # Ears
+    # Ears (extracted from Face_Mask_female.svg layer11: path185 and path184)
     "ear_right": [
-        (0.653864, 0.474606),
-        (0.723844, 0.449786),
-        (0.711775, 0.433240),
-        (0.695229, 0.412257),
-        (0.653864, 0.400148),
-        (0.587679, 0.449786),
+        (0.828125, 0.437500),
+        (0.859375, 0.375000),
+        (0.890625, 0.375000),
+        (0.828125, 0.609375),
+        (0.796875, 0.625000),
     ],
     "ear_left": [
-        (0.288225, 0.433240),
-        (0.276156, 0.449786),
-        (0.346136, 0.474606),
-        (0.412321, 0.449786),
-        (0.346136, 0.400148),
-        (0.304771, 0.412257),
+        (0.171875, 0.437500),
+        (0.140625, 0.375000),
+        (0.109375, 0.375000),
+        (0.171875, 0.609375),
+        (0.203125, 0.625000),
     ],
-    # Nose tip
+    # Nose tip (extracted from Face_Mask_female.svg layer6: path186)
     "nose_tip": [
-        (0.455541, 0.542654),
-        (0.428341, 0.619195),
-        (0.430238, 0.648926),
-        (0.455541, 0.655884),
-        (0.449215, 0.636907),
-        (0.500000, 0.671066),
-        (0.550785, 0.636907),
-        (0.544459, 0.655884),
-        (0.569762, 0.648926),
-        (0.571659, 0.619195),
-        (0.544459, 0.542654),
+        (0.473038, 0.587625),
+        (0.459375, 0.634375),
+        (0.500000, 0.650000),
+        (0.540625, 0.634375),
+        (0.526962, 0.587625),
     ],
 }
 
@@ -742,49 +734,31 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in outer_head]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw lips (upper and lower) with direction-specific scaling
-        # Mouth midline is approximately at y = 0.757394
-        mouth_midline_y = 0.757394
+        # Draw ears with scaling and positioning (no rotation)
+        # Ears are drawn after head_outline and before cheeks for proper layering
+        if "ear_left" in face_points:
+            ear_left = transform_polygon(
+                face_points["ear_left"],
+                ear_left_size_x,
+                ear_left_size_y,
+                ear_left_pos_x,
+                ear_left_pos_y,
+            )
+            pixel_points = [to_pixel(pt) for pt in ear_left]
+            if len(pixel_points) >= 2:
+                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
         
-        # Upper lip - scale upward (decreasing y, toward top of image)
-        if "lips_upper" in face_points:
-            lips_upper_scaled = []
-            for rx, ry in face_points["lips_upper"]:
-                # Apply horizontal scaling around center
-                cx = sum(px for px, _ in face_points["lips_upper"]) / len(face_points["lips_upper"])
-                dx = (rx - cx) * lips_size_x
-                new_x = cx + dx
-                
-                # Apply vertical scaling only in upward direction from midline
-                # Upper lip is above midline, so we scale away from midline (decreasing y)
-                dy_from_midline = ry - mouth_midline_y  # negative for upper lip
-                scaled_dy = dy_from_midline * lip_upper_size_y
-                new_y = mouth_midline_y + scaled_dy + lips_pos_y
-                
-                lips_upper_scaled.append((new_x, new_y))
-            
-            pixel_points = [to_pixel(pt) for pt in lips_upper_scaled]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-        
-        # Lower lip - scale downward (increasing y, toward bottom of image)
-        if "lips_lower" in face_points:
-            lips_lower_scaled = []
-            for rx, ry in face_points["lips_lower"]:
-                # Apply horizontal scaling around center
-                cx = sum(px for px, _ in face_points["lips_lower"]) / len(face_points["lips_lower"])
-                dx = (rx - cx) * lips_size_x
-                new_x = cx + dx
-                
-                # Apply vertical scaling only in downward direction from midline
-                # Lower lip is below midline, so we scale away from midline (increasing y)
-                dy_from_midline = ry - mouth_midline_y  # positive for lower lip
-                scaled_dy = dy_from_midline * lip_lower_size_y
-                new_y = mouth_midline_y + scaled_dy + lips_pos_y
-                
-                lips_lower_scaled.append((new_x, new_y))
-            
-            pixel_points = [to_pixel(pt) for pt in lips_lower_scaled]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+        if "ear_right" in face_points:
+            ear_right = transform_polygon(
+                face_points["ear_right"],
+                ear_right_size_x,
+                ear_right_size_y,
+                ear_right_pos_x,
+                ear_right_pos_y,
+            )
+            pixel_points = [to_pixel(pt) for pt in ear_right]
+            if len(pixel_points) >= 2:
+                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw chin with scaling only (no positioning)
         if "chin" in face_points:
@@ -836,6 +810,7 @@ class ComfyUIFaceShaper:
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
         
         # Draw nose tip with scaling and y-positioning (no x-positioning, no rotation)
+        # Nose tip is drawn after nose base and before lips for proper layering
         if "nose_tip" in face_points:
             nose_tip = transform_polygon(
                 face_points["nose_tip"],
@@ -845,29 +820,51 @@ class ComfyUIFaceShaper:
                 nose_tip_pos_y,
             )
             pixel_points = [to_pixel(pt) for pt in nose_tip]
+            if len(pixel_points) >= 2:
+                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+
+        # Draw lips (upper and lower) with direction-specific scaling
+        # Mouth midline is approximately at y = 0.757394
+        mouth_midline_y = 0.757394
+        
+        # Upper lip - scale upward (decreasing y, toward top of image)
+        if "lips_upper" in face_points:
+            lips_upper_scaled = []
+            for rx, ry in face_points["lips_upper"]:
+                # Apply horizontal scaling around center
+                cx = sum(px for px, _ in face_points["lips_upper"]) / len(face_points["lips_upper"])
+                dx = (rx - cx) * lips_size_x
+                new_x = cx + dx
+                
+                # Apply vertical scaling only in upward direction from midline
+                # Upper lip is above midline, so we scale away from midline (decreasing y)
+                dy_from_midline = ry - mouth_midline_y  # negative for upper lip
+                scaled_dy = dy_from_midline * lip_upper_size_y
+                new_y = mouth_midline_y + scaled_dy + lips_pos_y
+                
+                lips_upper_scaled.append((new_x, new_y))
+            
+            pixel_points = [to_pixel(pt) for pt in lips_upper_scaled]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
         
-        # Draw ears with scaling and positioning (no rotation)
-        if "ear_left" in face_points:
-            ear_left = transform_polygon(
-                face_points["ear_left"],
-                ear_left_size_x,
-                ear_left_size_y,
-                ear_left_pos_x,
-                ear_left_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in ear_left]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-        
-        if "ear_right" in face_points:
-            ear_right = transform_polygon(
-                face_points["ear_right"],
-                ear_right_size_x,
-                ear_right_size_y,
-                ear_right_pos_x,
-                ear_right_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in ear_right]
+        # Lower lip - scale downward (increasing y, toward bottom of image)
+        if "lips_lower" in face_points:
+            lips_lower_scaled = []
+            for rx, ry in face_points["lips_lower"]:
+                # Apply horizontal scaling around center
+                cx = sum(px for px, _ in face_points["lips_lower"]) / len(face_points["lips_lower"])
+                dx = (rx - cx) * lips_size_x
+                new_x = cx + dx
+                
+                # Apply vertical scaling only in downward direction from midline
+                # Lower lip is below midline, so we scale away from midline (increasing y)
+                dy_from_midline = ry - mouth_midline_y  # positive for lower lip
+                scaled_dy = dy_from_midline * lip_lower_size_y
+                new_y = mouth_midline_y + scaled_dy + lips_pos_y
+                
+                lips_lower_scaled.append((new_x, new_y))
+            
+            pixel_points = [to_pixel(pt) for pt in lips_lower_scaled]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw cheeks with position offsets and connect them to outer head
