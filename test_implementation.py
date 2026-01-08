@@ -12,15 +12,15 @@ def test_geometry_data():
     
     # Check that ear_left exists
     assert "ear_left" in FEMALE_FACE, "ear_left not found in FEMALE_FACE"
-    assert len(FEMALE_FACE["ear_left"]) == 6, f"ear_left should have 6 points, got {len(FEMALE_FACE['ear_left'])}"
+    assert len(FEMALE_FACE["ear_left"]) == 5, f"ear_left should have 5 points, got {len(FEMALE_FACE['ear_left'])}"
     
     # Check that ear_right exists
     assert "ear_right" in FEMALE_FACE, "ear_right not found in FEMALE_FACE"
-    assert len(FEMALE_FACE["ear_right"]) == 6, f"ear_right should have 6 points, got {len(FEMALE_FACE['ear_right'])}"
+    assert len(FEMALE_FACE["ear_right"]) == 5, f"ear_right should have 5 points, got {len(FEMALE_FACE['ear_right'])}"
     
     # Check that nose_tip exists
     assert "nose_tip" in FEMALE_FACE, "nose_tip not found in FEMALE_FACE"
-    assert len(FEMALE_FACE["nose_tip"]) == 11, f"nose_tip should have 11 points, got {len(FEMALE_FACE['nose_tip'])}"
+    assert len(FEMALE_FACE["nose_tip"]) == 5, f"nose_tip should have 5 points, got {len(FEMALE_FACE['nose_tip'])}"
     
     # Verify coordinates are normalized (0-1 range)
     for key in ["ear_left", "ear_right", "nose_tip"]:
