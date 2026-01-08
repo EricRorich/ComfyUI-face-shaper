@@ -196,13 +196,15 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
 # Normalized using SVG viewBox coordinates:
 # - Right iris: cx=170.09473, cy=115.99001, r=7.36947 → normalized by viewBox dimensions
 # - Left iris: cx=100.8386, cy=115.99001, r=7.36947 → normalized by viewBox dimensions
+# Baked offsets: left iris -0.020 (from -0.040*0.5), right iris +0.020 (from +0.040*0.5)
+# to achieve correct visual alignment with iris_pos_x defaults at 0.0
 FEMALE_FACE_IRISES = {
-    "iris_right": {"center": (0.6278103272, 0.4281127706), "radius": 0.0272003099},
-    "iris_left": {"center": (0.3721897466, 0.4281127706), "radius": 0.0272003099},
+    "iris_right": {"center": (0.6478103272, 0.4281127706), "radius": 0.0272003099},
+    "iris_left": {"center": (0.3521897466, 0.4281127706), "radius": 0.0272003099},
 }
 
 # Number of parameters in settings_list (for import/export functionality)
-# Set to 60 to allow for future expansion (currently 58 parameters are used)
+# Set to 60 to allow for future expansion (currently 59 parameters are used)
 SETTINGS_LIST_LENGTH = 60
 
 # Cheek connection points (hardcoded from SVG coordinates)
@@ -472,6 +474,10 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
+                "fov_mm": (
+                    "FLOAT",
+                    {"default": 80.0, "min": 16.0, "max": 200.0, "step": 1.0},
+                ),
                 "line_thickness": (
                     "FLOAT",
                     {"default": 2.0, "min": 0.5, "max": 10.0, "step": 0.1},
@@ -543,6 +549,7 @@ class ComfyUIFaceShaper:
         camera_distance: float,
         camera_pos_x: float,
         camera_pos_y: float,
+        fov_mm: float,
         line_thickness: float,
         settings_list=None,
     ):
@@ -604,10 +611,11 @@ class ComfyUIFaceShaper:
             camera_distance = settings_list[52]
             camera_pos_x = settings_list[53]
             camera_pos_y = settings_list[54]
-            line_thickness = settings_list[55]
-            # Note: canvas_width/canvas_height (indices 56-57) are exported but not imported
+            fov_mm = settings_list[55]
+            line_thickness = settings_list[56]
+            # Note: canvas_width/canvas_height (indices 57-58) are exported but not imported
             # as they are always provided as direct parameters to the method
-            # Total: 58 parameters (56 feature controls + 2 canvas dimensions)
+            # Total: 59 parameters (57 feature controls + 2 canvas dimensions)
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
@@ -621,12 +629,37 @@ class ComfyUIFaceShaper:
         # Pillow expects integer stroke widths; round and enforce a minimum of 1 so lines stay visible.
         stroke_width = max(1, int(round(line_thickness)))
 
+        # Calculate radial distortion coefficient based on fov_mm
+        # Neutral at 80mm => k1=0
+        # For fov_mm < 80 (wide) use negative k1 (barrel distortion)
+        # For fov_mm > 80 use positive k1 (pincushion distortion)
+        t = fov_mm - 80.0
+        if t < 0:
+            tn = t / (80.0 - 16.0)  # [-1, 0]
+        else:
+            tn = t / (200.0 - 80.0)  # [0, 1]
+        k1 = tn * 0.18
+
+        def apply_distortion(x: float, y: float) -> Tuple[float, float]:
+            """Apply radial distortion to pixel coordinates."""
+            if k1 == 0:
+                return (x, y)
+            cx = canvas_width / 2.0
+            cy = canvas_height / 2.0
+            dx = (x - cx) / cx
+            dy = (y - cy) / cy
+            r2 = dx * dx + dy * dy
+            factor = 1.0 + k1 * r2
+            x_distorted = cx + dx * factor * cx
+            y_distorted = cy + dy * factor * cy
+            return (x_distorted, y_distorted)
+
         def to_pixel(point: Tuple[float, float]) -> Tuple[float, float]:
-            """Convert relative coordinates in range [0,1] to pixel positions."""
+            """Convert relative coordinates in range [0,1] to pixel positions with distortion."""
             rx, ry = point
             x = (rx - 0.5 + camera_pos_x) * canvas_width * camera_distance + canvas_width / 2.0
             y = (ry - 0.5 + camera_pos_y) * canvas_height * camera_distance + canvas_height / 2.0
-            return (x, y)
+            return apply_distortion(x, y)
 
         # Helper to scale and translate polygons.
         def transform_polygon(
@@ -1001,6 +1034,7 @@ class ComfyUIFaceShaper:
             camera_distance,
             camera_pos_x,
             camera_pos_y,
+            fov_mm,
             line_thickness,
             canvas_width,
             canvas_height,

@@ -84,10 +84,10 @@ def test_settings_list_length():
     # Count parameters in order:
     # Eyes: 8, Irises: 6, Head: 4, Lips: 4, Chin: 2, Cheeks: 4
     # Ears: 8 (NEW), Eyebrows: 10, Nose: 3, Nose tip: 3 (NEW)
-    # Camera: 4 (distance, pos_x, pos_y, line_thickness), Canvas: 2 (width, height)
-    # Total: 8+6+4+4+2+4+8+10+3+3+4+2 = 58 actual parameters
+    # Camera: 5 (distance, pos_x, pos_y, fov_mm, line_thickness), Canvas: 2 (width, height)
+    # Total: 8+6+4+4+2+4+8+10+3+3+5+2 = 59 actual parameters
     
-    # SETTINGS_LIST_LENGTH is set to 60 for future expansion (58 used + 2 reserved)
+    # SETTINGS_LIST_LENGTH is set to 60 for future expansion (59 used + 1 reserved)
     assert SETTINGS_LIST_LENGTH == 60, f"SETTINGS_LIST_LENGTH should be 60, got {SETTINGS_LIST_LENGTH}"
     
     print("✓ SETTINGS_LIST_LENGTH test passed")
@@ -149,6 +149,7 @@ def test_basic_rendering():
             nose_pos_y=0.0, nose_size_x=1.0, nose_size_y=1.0,
             nose_tip_pos_y=0.0, nose_tip_size_x=1.0, nose_tip_size_y=1.0,
             camera_distance=1.0, camera_pos_x=0.0, camera_pos_y=0.0,
+            fov_mm=80.0,
             line_thickness=2.0,
             settings_list=None
         )
@@ -161,8 +162,8 @@ def test_basic_rendering():
         assert tensor.shape[2] == 512, "Width should be 512"
         assert tensor.shape[3] == 3, "Should have 3 channels (RGB)"
         
-        # Check settings_list length (58 actual parameters in export list)
-        assert len(settings_list) == 58, f"settings_list should have 58 elements, got {len(settings_list)}"
+        # Check settings_list length (59 actual parameters in export list)
+        assert len(settings_list) == 59, f"settings_list should have 59 elements, got {len(settings_list)}"
         
         print("✓ Basic rendering test passed")
         
