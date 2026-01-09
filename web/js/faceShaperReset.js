@@ -63,6 +63,7 @@ app.registerExtension({
                         "eyebrow_right_pos_x": 0.0,
                         "eyebrow_right_pos_y": 0.0,
                         "eyebrow_right_rotation": 0.0,
+                        "cheeks_enabled": true,
                         "cheek_left_pos_x": 0.0,
                         "cheek_left_pos_y": 0.0,
                         "cheek_right_pos_x": 0.0,

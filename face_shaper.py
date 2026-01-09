@@ -239,31 +239,33 @@ def _normalize_svg_coordinates(polylines: List[List[Tuple[float, float]]],
 
 
 # relative coordinates for female face (0–1 range)
-# Extracted from Face_Mask_female.svg (1024x1024 normalized coordinates)
+# Extracted from Face_Mask_female.svg using viewBox (0, 0, 270.93331, 270.93331) normalization
 FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
-    # Outer head outline
+    # Outer head outline - extracted from path173 with g41 transform applied
     "outer_head": [
-        (0.571760, 0.935952),
-        (0.679310, 0.854875),
-        (0.752114, 0.752289),
-        (0.791825, 0.621574),
-        (0.791825, 0.547116),
-        (0.818299, 0.464385),
-        (0.791825, 0.381654),
-        (0.791825, 0.193027),
-        (0.626362, 0.072239),
-        (0.500000, 0.072239),
-        (0.373638, 0.072239),
-        (0.208175, 0.193027),
-        (0.208175, 0.381654),
-        (0.181701, 0.464385),
-        (0.208175, 0.547116),
-        (0.208175, 0.621574),
-        (0.247886, 0.752289),
-        (0.320690, 0.854875),
         (0.428240, 0.935952),
-        (0.500000, 0.935174),
-        (0.571760, 0.935952),  # Close the polyline
+        (0.320690, 0.854875),
+        (0.247886, 0.752289),
+        (0.208175, 0.621574),
+        (0.208175, 0.547116),
+        (0.181701, 0.464385),
+        (0.208175, 0.381654),
+        (0.208285, 0.218750),
+        (0.265626, 0.125000),
+        (0.373638, 0.072239),
+        (0.500000, 0.062500),
+        (0.626362, 0.072239),
+        (0.734375, 0.125000),
+        (0.791715, 0.218750),
+        (0.791825, 0.381654),
+        (0.818299, 0.464385),
+        (0.791825, 0.547116),
+        (0.791825, 0.621574),
+        (0.752114, 0.752289),
+        (0.679310, 0.854875),
+        (0.571760, 0.935952),
+        (0.500000, 0.953125),
+        (0.428240, 0.935952),  # Close the polyline (z command)
     ],
     # Cheeks
     "cheek_right": [
@@ -394,7 +396,11 @@ FEMALE_FACE_IRISES = {
 }
 
 # Number of parameters in settings_list (for import/export functionality)
-# Set to 60 to allow for future expansion (currently 48 parameters are used)
+# Current list: 49 parameters + padding for future expansion
+# Breakdown:
+# - 47 feature control parameters (eyes, eyebrows, nose, lips, etc.)
+# - 1 cheeks_enabled toggle (boolean)
+# - 2 canvas dimensions (width, height) - exported but not imported
 SETTINGS_LIST_LENGTH = 60
 
 # Cheek connection points (hardcoded from SVG coordinates)
@@ -573,6 +579,7 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
                 ),
+                "cheeks_enabled": ("BOOLEAN", {"default": True}),
                 "cheek_left_pos_x": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
@@ -668,6 +675,7 @@ class ComfyUIFaceShaper:
         eyebrow_right_pos_x: float,
         eyebrow_right_pos_y: float,
         eyebrow_right_rotation: float,
+        cheeks_enabled: bool,
         cheek_left_pos_x: float,
         cheek_left_pos_y: float,
         cheek_right_pos_x: float,
@@ -741,9 +749,14 @@ class ComfyUIFaceShaper:
             camera_pos_y = settings_list[44]
             fov_mm = settings_list[45]
             line_thickness = settings_list[46]
+            # Index 48: cheeks_enabled (new parameter, fallback to True if missing)
+            if len(settings_list) > 48:
+                cheeks_enabled = settings_list[48]
+            else:
+                cheeks_enabled = True
             # Note: canvas_width/canvas_height (indices 47-48) are exported but not imported
             # as they are always provided as direct parameters to the method
-            # Total: 48 parameters (46 feature controls + 2 canvas dimensions)
+            # Total: 49 parameters (47 feature controls + 1 cheeks_enabled + 2 canvas dimensions - canvas not imported)
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
@@ -1022,34 +1035,35 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in lips_lower_scaled]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw cheeks with position offsets and connect them to outer head
-        if "cheek_left" in face_points:
-            cheek_left = translate_polygon(
-                face_points["cheek_left"],
-                cheek_left_pos_x,
-                cheek_left_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in cheek_left]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-            # Connect cheek_left last point to outer head point
-            cheek_left_end = to_pixel((CHEEK_LEFT_END_POINT[0] + cheek_left_pos_x,
-                                       CHEEK_LEFT_END_POINT[1] + cheek_left_pos_y))
-            outer_head_point = to_pixel(CHEEK_LEFT_OUTER_HEAD_POINT)
-            draw.line([cheek_left_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
+        # Draw cheeks with position offsets and connect them to outer head (if enabled)
+        if cheeks_enabled:
+            if "cheek_left" in face_points:
+                cheek_left = translate_polygon(
+                    face_points["cheek_left"],
+                    cheek_left_pos_x,
+                    cheek_left_pos_y,
+                )
+                pixel_points = [to_pixel(pt) for pt in cheek_left]
+                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+                # Connect cheek_left last point to outer head point
+                cheek_left_end = to_pixel((CHEEK_LEFT_END_POINT[0] + cheek_left_pos_x,
+                                           CHEEK_LEFT_END_POINT[1] + cheek_left_pos_y))
+                outer_head_point = to_pixel(CHEEK_LEFT_OUTER_HEAD_POINT)
+                draw.line([cheek_left_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
 
-        if "cheek_right" in face_points:
-            cheek_right = translate_polygon(
-                face_points["cheek_right"],
-                cheek_right_pos_x,
-                cheek_right_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in cheek_right]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-            # Connect cheek_right last point to outer head point
-            cheek_right_end = to_pixel((CHEEK_RIGHT_END_POINT[0] + cheek_right_pos_x,
-                                        CHEEK_RIGHT_END_POINT[1] + cheek_right_pos_y))
-            outer_head_point = to_pixel(CHEEK_RIGHT_OUTER_HEAD_POINT)
-            draw.line([cheek_right_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
+            if "cheek_right" in face_points:
+                cheek_right = translate_polygon(
+                    face_points["cheek_right"],
+                    cheek_right_pos_x,
+                    cheek_right_pos_y,
+                )
+                pixel_points = [to_pixel(pt) for pt in cheek_right]
+                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+                # Connect cheek_right last point to outer head point
+                cheek_right_end = to_pixel((CHEEK_RIGHT_END_POINT[0] + cheek_right_pos_x,
+                                            CHEEK_RIGHT_END_POINT[1] + cheek_right_pos_y))
+                outer_head_point = to_pixel(CHEEK_RIGHT_OUTER_HEAD_POINT)
+                draw.line([cheek_right_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
 
         # Transform and draw both eyes with scale → rotate → translate
         eye_right = transform_eye(
@@ -1152,6 +1166,7 @@ class ComfyUIFaceShaper:
             line_thickness,
             canvas_width,
             canvas_height,
+            cheeks_enabled,
         ]
         
         return (tensor, settings_export)
