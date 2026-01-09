@@ -2,16 +2,19 @@
 Refined implementation of the ComfyUI Face Shaper custom node.
 
 This module implements a custom node that draws a stylized facial mask based on
-SVG‑derived coordinates extracted from Face_Mask_female.svg (1024×1024). Users 
-can adjust the positions and sizes of distinct facial features including:
-outer head outline, eyes, irises, eyebrows, nose (single merged object with 
-integrated tip control), lips (upper and lower with direction-specific scaling), 
-chin, and cheeks. All coordinates are normalized to [0-1] range. Users can select 
+SVG‑derived coordinates extracted from Face_Mask_female.svg (viewBox 270.93331×270.93331). 
+Users can adjust the positions and sizes of distinct facial features including:
+outer head outline, eyes (with independent rotation), irises, eyebrows, nose (single 
+merged object with integrated tip control), lips (upper and lower with direction-specific 
+scaling), and cheeks. All coordinates are normalized to [0-1] range. Users can select 
 a gender preset (currently both genders use the same coordinates), change the canvas 
 size and camera distance, and control the line thickness. The output is black lines 
 on either a white or transparent background as a tensor compatible with ComfyUI workflows.
 
 Key improvements in this version:
+- Eyes updated with new geometry from SVG (path190/path188)
+- Independent eye rotation controls (eye_left_rotation, eye_right_rotation)
+- Chin geometry completely removed from node
 - Nose tip now integrated within nose polyline (no separate geometry)
 - nose_tip_pos_y controls only the 3 middle-most, lowest-Y points of nose
 - Removed obsolete nose_tip size controls (nose_tip_size_x, nose_tip_size_y)
@@ -275,16 +278,6 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.226775, 0.603442),
         (0.316923, 0.729073),
     ],
-    # Chin
-    "chin": [
-        (0.445406, 0.935787),
-        (0.430974, 0.890426),
-        (0.459156, 0.851369),
-        (0.500000, 0.838925),
-        (0.540844, 0.851369),
-        (0.569026, 0.890426),
-        (0.554594, 0.935787),
-    ],
     # Lips - now split into upper and lower (single shapes each)
     # CORRECTED: lips_upper is now the actual upper lip (smaller y values)
     # and lips_lower is the actual lower lip (larger y values)
@@ -316,24 +309,43 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.500001, 0.762932),
         (0.458618, 0.750634),  # Close the polyline
     ],
-    # Eyes
+    # Eyes - extracted from Face_Mask_female.svg path190 (right) and path188 (left)
+    # Normalized using viewBox (0, 0, 270.93331, 270.93331)
     "eye_right": [
-        (0.653864, 0.474606),
-        (0.723844, 0.449786),
-        (0.711775, 0.433240),
-        (0.695229, 0.412257),
-        (0.653864, 0.400148),
-        (0.587679, 0.449786),
-        (0.653864, 0.474606),  # Close the polyline
+        (0.709375, 0.437500),
+        (0.693750, 0.425000),
+        (0.671875, 0.412500),
+        (0.653125, 0.409375),
+        (0.631250, 0.412500),
+        (0.615625, 0.421875),
+        (0.600000, 0.434375),
+        (0.584375, 0.446875),
+        (0.578125, 0.459375),
+        (0.603125, 0.456250),
+        (0.621875, 0.459375),
+        (0.646875, 0.465625),
+        (0.662500, 0.465625),
+        (0.681250, 0.459375),
+        (0.693750, 0.453125),
+        (0.709375, 0.437500),  # Close the polyline
     ],
     "eye_left": [
-        (0.288225, 0.433240),
-        (0.276156, 0.449786),
-        (0.346136, 0.474606),
-        (0.412321, 0.449786),
-        (0.346136, 0.400148),
-        (0.304771, 0.412257),
-        (0.288225, 0.433240),  # Close the polyline
+        (0.290625, 0.437500),
+        (0.306250, 0.425000),
+        (0.328125, 0.412500),
+        (0.346875, 0.409375),
+        (0.368750, 0.412500),
+        (0.384375, 0.421875),
+        (0.400000, 0.434375),
+        (0.415625, 0.446875),
+        (0.421875, 0.459375),
+        (0.396875, 0.456250),
+        (0.378125, 0.459375),
+        (0.353125, 0.465625),
+        (0.337500, 0.465625),
+        (0.318750, 0.459375),
+        (0.306250, 0.453125),
+        (0.290625, 0.437500),  # Close the polyline
     ],
     # Eyebrows
     "eyebrow_right": [
@@ -455,6 +467,14 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
+                "eye_left_rotation": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
+                ),
+                "eye_right_rotation": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
+                ),
                 # Irises (separated)
                 "iris_left_size": (
                     "FLOAT",
@@ -511,15 +531,6 @@ class ComfyUIFaceShaper:
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
                 "lip_lower_size_y": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                # Chin
-                "chin_size_x": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "chin_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
@@ -641,6 +652,8 @@ class ComfyUIFaceShaper:
         eye_right_size_y: float,
         eye_right_pos_x: float,
         eye_right_pos_y: float,
+        eye_left_rotation: float,
+        eye_right_rotation: float,
         iris_left_size: float,
         iris_left_pos_x: float,
         iris_left_pos_y: float,
@@ -655,8 +668,6 @@ class ComfyUIFaceShaper:
         lips_size_x: float,
         lip_upper_size_y: float,
         lip_lower_size_y: float,
-        chin_size_x: float,
-        chin_size_y: float,
         cheek_left_pos_x: float,
         cheek_left_pos_y: float,
         cheek_right_pos_x: float,
@@ -693,22 +704,22 @@ class ComfyUIFaceShaper:
             eye_right_size_y = settings_list[5]
             eye_right_pos_x = settings_list[6]
             eye_right_pos_y = settings_list[7]
-            iris_left_size = settings_list[8]
-            iris_left_pos_x = settings_list[9]
-            iris_left_pos_y = settings_list[10]
-            iris_right_size = settings_list[11]
-            iris_right_pos_x = settings_list[12]
-            iris_right_pos_y = settings_list[13]
-            outer_head_size_x = settings_list[14]
-            outer_head_size_y = settings_list[15]
-            jaw_size_x = settings_list[16]
-            forehead_size_x = settings_list[17]
-            lips_pos_y = settings_list[18]
-            lips_size_x = settings_list[19]
-            lip_upper_size_y = settings_list[20]
-            lip_lower_size_y = settings_list[21]
-            chin_size_x = settings_list[22]
-            chin_size_y = settings_list[23]
+            eye_left_rotation = settings_list[8]
+            eye_right_rotation = settings_list[9]
+            iris_left_size = settings_list[10]
+            iris_left_pos_x = settings_list[11]
+            iris_left_pos_y = settings_list[12]
+            iris_right_size = settings_list[13]
+            iris_right_pos_x = settings_list[14]
+            iris_right_pos_y = settings_list[15]
+            outer_head_size_x = settings_list[16]
+            outer_head_size_y = settings_list[17]
+            jaw_size_x = settings_list[18]
+            forehead_size_x = settings_list[19]
+            lips_pos_y = settings_list[20]
+            lips_size_x = settings_list[21]
+            lip_upper_size_y = settings_list[22]
+            lip_lower_size_y = settings_list[23]
             cheek_left_pos_x = settings_list[24]
             cheek_left_pos_y = settings_list[25]
             cheek_right_pos_x = settings_list[26]
@@ -735,6 +746,7 @@ class ComfyUIFaceShaper:
             # Note: canvas_width/canvas_height (indices 47-48) are exported but not imported
             # as they are always provided as direct parameters to the method
             # Total: 48 parameters (46 feature controls + 2 canvas dimensions)
+            # Breaking change: old settings_lists with chin parameters are not compatible
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
@@ -873,6 +885,33 @@ class ComfyUIFaceShaper:
             # Step 3: Apply positional offset
             return translate_polygon(rotated, pos_x, pos_y)
 
+        # Helper to transform eye: scale → rotate → translate
+        def transform_eye(
+            points: List[Tuple[float, float]],
+            size_x: float,
+            size_y: float,
+            rotation_degrees: float,
+            pos_x: float,
+            pos_y: float,
+        ) -> List[Tuple[float, float]]:
+            """Apply scale, rotation, and translation to eye points."""
+            # Calculate centroid across all points
+            cx = sum(px for px, _ in points) / len(points)
+            cy = sum(py for _, py in points) / len(points)
+            
+            # Step 1: Scale around centroid
+            scaled = []
+            for rx, ry in points:
+                dx = (rx - cx) * size_x
+                dy = (ry - cy) * size_y
+                scaled.append((cx + dx, cy + dy))
+            
+            # Step 2: Rotate around centroid
+            rotated = rotate_polygon(scaled, rotation_degrees, cx, cy)
+            
+            # Step 3: Apply positional offset
+            return translate_polygon(rotated, pos_x, pos_y)
+
         # Draw outer head outline with per-region horizontal scaling
         if "outer_head" in face_points:
             # Calculate centroid for scaling
@@ -898,18 +937,6 @@ class ComfyUIFaceShaper:
                 outer_head.append((cx + dx, cy + dy))
             
             pixel_points = [to_pixel(pt) for pt in outer_head]
-            draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-
-        # Draw chin with scaling only (no positioning)
-        if "chin" in face_points:
-            chin = transform_polygon(
-                face_points["chin"],
-                chin_size_x,
-                chin_size_y,
-                0.0,
-                0.0,
-            )
-            pixel_points = [to_pixel(pt) for pt in chin]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw eyebrows with scale → rotation → translation transform order
@@ -1054,18 +1081,20 @@ class ComfyUIFaceShaper:
             outer_head_point = to_pixel(CHEEK_RIGHT_OUTER_HEAD_POINT)
             draw.line([cheek_right_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
 
-        # Transform and draw both eyes.
-        eye_right = transform_polygon(
+        # Transform and draw both eyes with scale → rotate → translate
+        eye_right = transform_eye(
             face_points["eye_right"],
             eye_right_size_x,
             eye_right_size_y,
+            eye_right_rotation,
             eye_right_pos_x,
             eye_right_pos_y,
         )
-        eye_left = transform_polygon(
+        eye_left = transform_eye(
             face_points["eye_left"],
             eye_left_size_x,
             eye_left_size_y,
+            eye_left_rotation,
             eye_left_pos_x,
             eye_left_pos_y,
         )
@@ -1112,6 +1141,8 @@ class ComfyUIFaceShaper:
             eye_right_size_y,
             eye_right_pos_x,
             eye_right_pos_y,
+            eye_left_rotation,
+            eye_right_rotation,
             iris_left_size,
             iris_left_pos_x,
             iris_left_pos_y,
@@ -1126,8 +1157,6 @@ class ComfyUIFaceShaper:
             lips_size_x,
             lip_upper_size_y,
             lip_lower_size_y,
-            chin_size_x,
-            chin_size_y,
             cheek_left_pos_x,
             cheek_left_pos_y,
             cheek_right_pos_x,
