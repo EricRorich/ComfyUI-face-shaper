@@ -431,10 +431,44 @@ class ComfyUIFaceShaper:
             "required": {
                 "canvas_width": ("INT", {"default": 1024, "min": 256, "max": 2048}),
                 "canvas_height": ("INT", {"default": 1024, "min": 256, "max": 2048}),
-                "gender": (["female", "male"],),
                 "transparent_background": ("BOOLEAN", {"default": False}),
-                "debug_geometry": ("BOOLEAN", {"default": False}),
-                # Eyes
+                "line_thickness": (
+                    "FLOAT",
+                    {"default": 2.0, "min": 0.5, "max": 10.0, "step": 0.1},
+                ),
+                "gender": (["female", "male"],),
+                "fov_mm": (
+                    "FLOAT",
+                    {"default": 80.0, "min": 16.0, "max": 200.0, "step": 1.0},
+                ),
+                "camera_distance": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "camera_pos_x": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "camera_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "head_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "head_size_y": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "jaw_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
+                "fore_head_size_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                ),
                 "eye_left_size_x": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
@@ -450,6 +484,10 @@ class ComfyUIFaceShaper:
                 "eye_left_pos_y": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "eye_left_rotation": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
                 ),
                 "eye_right_size_x": (
                     "FLOAT",
@@ -467,15 +505,10 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
-                "eye_left_rotation": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
-                ),
                 "eye_right_rotation": (
                     "FLOAT",
                     {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
                 ),
-                # Irises (separated)
                 "iris_left_size": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
@@ -500,41 +533,46 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -0.25, "max": 0.25, "step": 0.005},
                 ),
-                # Outer head outline
-                "outer_head_size_x": (
+                "eyebrow_left_size_x": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "outer_head_size_y": (
+                "eyebrow_left_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "jaw_size_x": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "forehead_size_x": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                # Lips (shared controls for both upper and lower)
-                "lips_pos_y": (
+                "eyebrow_left_pos_x": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
-                "lips_size_x": (
+                "eyebrow_left_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "eyebrow_left_rotation": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
+                ),
+                "eyebrow_right_size_x": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "lip_upper_size_y": (
+                "eyebrow_right_size_y": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "lip_lower_size_y": (
+                "eyebrow_right_pos_x": (
                     "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
                 ),
-                # Cheeks
+                "eyebrow_right_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "eyebrow_right_rotation": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
+                ),
                 "cheek_left_pos_x": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
@@ -551,48 +589,6 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
                 ),
-                # Eyebrows
-                "eyebrow_left_size_x": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "eyebrow_left_size_y": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "eyebrow_left_rotation": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
-                ),
-                "eyebrow_left_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "eyebrow_left_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "eyebrow_right_size_x": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "eyebrow_right_size_y": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "eyebrow_right_rotation": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
-                ),
-                "eyebrow_right_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "eyebrow_right_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                # Nose (single merged object)
                 "nose_pos_y": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
@@ -605,31 +601,25 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                # Nose tip (integrated within nose polyline)
                 "nose_tip_pos_y": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.2, "max": 0.2, "step": 0.005},
                 ),
-                # Global
-                "camera_distance": (
+                "lips_pos_y": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "lip_size_x": (
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "camera_pos_x": (
+                "lip_upper_size_y": (
                     "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                "camera_pos_y": (
+                "lip_lower_size_y": (
                     "FLOAT",
-                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
-                ),
-                "fov_mm": (
-                    "FLOAT",
-                    {"default": 80.0, "min": 16.0, "max": 200.0, "step": 1.0},
-                ),
-                "line_thickness": (
-                    "FLOAT",
-                    {"default": 2.0, "min": 0.5, "max": 10.0, "step": 0.1},
+                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
             },
             "optional": {
@@ -641,18 +631,26 @@ class ComfyUIFaceShaper:
         self,
         canvas_width: int,
         canvas_height: int,
-        gender: str,
         transparent_background: bool,
-        debug_geometry: bool,
+        line_thickness: float,
+        gender: str,
+        fov_mm: float,
+        camera_distance: float,
+        camera_pos_x: float,
+        camera_pos_y: float,
+        head_size_x: float,
+        head_size_y: float,
+        jaw_size_x: float,
+        fore_head_size_x: float,
         eye_left_size_x: float,
         eye_left_size_y: float,
         eye_left_pos_x: float,
         eye_left_pos_y: float,
+        eye_left_rotation: float,
         eye_right_size_x: float,
         eye_right_size_y: float,
         eye_right_pos_x: float,
         eye_right_pos_y: float,
-        eye_left_rotation: float,
         eye_right_rotation: float,
         iris_left_size: float,
         iris_left_pos_x: float,
@@ -660,42 +658,39 @@ class ComfyUIFaceShaper:
         iris_right_size: float,
         iris_right_pos_x: float,
         iris_right_pos_y: float,
-        outer_head_size_x: float,
-        outer_head_size_y: float,
-        jaw_size_x: float,
-        forehead_size_x: float,
-        lips_pos_y: float,
-        lips_size_x: float,
-        lip_upper_size_y: float,
-        lip_lower_size_y: float,
+        eyebrow_left_size_x: float,
+        eyebrow_left_size_y: float,
+        eyebrow_left_pos_x: float,
+        eyebrow_left_pos_y: float,
+        eyebrow_left_rotation: float,
+        eyebrow_right_size_x: float,
+        eyebrow_right_size_y: float,
+        eyebrow_right_pos_x: float,
+        eyebrow_right_pos_y: float,
+        eyebrow_right_rotation: float,
         cheek_left_pos_x: float,
         cheek_left_pos_y: float,
         cheek_right_pos_x: float,
         cheek_right_pos_y: float,
-        eyebrow_left_size_x: float,
-        eyebrow_left_size_y: float,
-        eyebrow_left_rotation: float,
-        eyebrow_left_pos_x: float,
-        eyebrow_left_pos_y: float,
-        eyebrow_right_size_x: float,
-        eyebrow_right_size_y: float,
-        eyebrow_right_rotation: float,
-        eyebrow_right_pos_x: float,
-        eyebrow_right_pos_y: float,
         nose_pos_y: float,
         nose_size_x: float,
         nose_size_y: float,
         nose_tip_pos_y: float,
-        camera_distance: float,
-        camera_pos_x: float,
-        camera_pos_y: float,
-        fov_mm: float,
-        line_thickness: float,
+        lips_pos_y: float,
+        lip_size_x: float,
+        lip_upper_size_y: float,
+        lip_lower_size_y: float,
         settings_list=None,
     ):
         """Render the facial mask image and return it as a tensor."""
         # Handle settings_list import: override all adjustable parameters if provided
         if settings_list is not None and len(settings_list) >= SETTINGS_LIST_LENGTH:
+            # Backward compatibility: check if old parameter names are present
+            # Old settings_list had outer_head_size_x/y at indices 16-17
+            # If settings_list[16] looks reasonable (0.5-2.0 range), assume it's the old format
+            # New format uses same indices but with renamed parameters
+            
+            # Import all parameters from settings_list (indices match export order)
             eye_left_size_x = settings_list[0]
             eye_left_size_y = settings_list[1]
             eye_left_pos_x = settings_list[2]
@@ -712,12 +707,15 @@ class ComfyUIFaceShaper:
             iris_right_size = settings_list[13]
             iris_right_pos_x = settings_list[14]
             iris_right_pos_y = settings_list[15]
-            outer_head_size_x = settings_list[16]
-            outer_head_size_y = settings_list[17]
+            # Indices 16-17: old outer_head_size_x/y → new head_size_x/y (backward compatible)
+            head_size_x = settings_list[16]
+            head_size_y = settings_list[17]
             jaw_size_x = settings_list[18]
-            forehead_size_x = settings_list[19]
+            # Index 19: old forehead_size_x → new fore_head_size_x (backward compatible)
+            fore_head_size_x = settings_list[19]
             lips_pos_y = settings_list[20]
-            lips_size_x = settings_list[21]
+            # Index 21: old lips_size_x → new lip_size_x (backward compatible)
+            lip_size_x = settings_list[21]
             lip_upper_size_y = settings_list[22]
             lip_lower_size_y = settings_list[23]
             cheek_left_pos_x = settings_list[24]
@@ -746,24 +744,9 @@ class ComfyUIFaceShaper:
             # Note: canvas_width/canvas_height (indices 47-48) are exported but not imported
             # as they are always provided as direct parameters to the method
             # Total: 48 parameters (46 feature controls + 2 canvas dimensions)
-            # Breaking change: old settings_lists with chin parameters are not compatible
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
-
-        # Debug geometry output
-        if debug_geometry:
-            print("\n=== Debug Geometry Summary ===")
-            for feature_name in ["nose"]:
-                if feature_name in face_points:
-                    points = face_points[feature_name]
-                    count = len(points)
-                    xs = [x for x, y in points]
-                    ys = [y for x, y in points]
-                    minx, maxx = min(xs), max(xs)
-                    miny, maxy = min(ys), max(ys)
-                    print(f"{feature_name}: count={count}, bbox=(minx={minx:.6f}, maxx={maxx:.6f}, miny={miny:.6f}, maxy={maxy:.6f})")
-            print("==============================\n")
 
         # Create a blank canvas - RGBA for transparent background, RGB for white background.
         if transparent_background:
@@ -926,14 +909,14 @@ class ComfyUIFaceShaper:
                     scale_x = jaw_size_x
                 elif ry < 0.3:
                     # Forehead region (top)
-                    scale_x = forehead_size_x
+                    scale_x = fore_head_size_x
                 else:
                     # Mid region
-                    scale_x = outer_head_size_x
+                    scale_x = head_size_x
                 
                 # Apply scaling
                 dx = (rx - cx) * scale_x
-                dy = (ry - cy) * outer_head_size_y
+                dy = (ry - cy) * head_size_y
                 outer_head.append((cx + dx, cy + dy))
             
             pixel_points = [to_pixel(pt) for pt in outer_head]
@@ -994,19 +977,6 @@ class ComfyUIFaceShaper:
             # Draw the nose
             pixel_points = [to_pixel(pt) for pt in nose_with_tip]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-            
-            # Optional: Mark nose tip points when debug_geometry is enabled
-            if debug_geometry:
-                for idx, (x, y) in enumerate(nose_with_tip):
-                    if idx in nose_tip_indices:
-                        px, py = to_pixel((x, y))
-                        # Draw a small circle marker (radius 3 pixels)
-                        marker_radius = 3
-                        draw.ellipse(
-                            [px - marker_radius, py - marker_radius, px + marker_radius, py + marker_radius],
-                            fill=(255, 0, 0),  # Red marker
-                            outline=(255, 0, 0)
-                        )
 
         # Draw lips (upper and lower) with direction-specific scaling
         # Mouth midline is approximately at y = 0.757394
@@ -1018,7 +988,7 @@ class ComfyUIFaceShaper:
             for rx, ry in face_points["lips_upper"]:
                 # Apply horizontal scaling around center
                 cx = sum(px for px, _ in face_points["lips_upper"]) / len(face_points["lips_upper"])
-                dx = (rx - cx) * lips_size_x
+                dx = (rx - cx) * lip_size_x
                 new_x = cx + dx
                 
                 # Apply vertical scaling only in upward direction from midline
@@ -1038,7 +1008,7 @@ class ComfyUIFaceShaper:
             for rx, ry in face_points["lips_lower"]:
                 # Apply horizontal scaling around center
                 cx = sum(px for px, _ in face_points["lips_lower"]) / len(face_points["lips_lower"])
-                dx = (rx - cx) * lips_size_x
+                dx = (rx - cx) * lip_size_x
                 new_x = cx + dx
                 
                 # Apply vertical scaling only in downward direction from midline
@@ -1149,12 +1119,12 @@ class ComfyUIFaceShaper:
             iris_right_size,
             iris_right_pos_x,
             iris_right_pos_y,
-            outer_head_size_x,
-            outer_head_size_y,
+            head_size_x,
+            head_size_y,
             jaw_size_x,
-            forehead_size_x,
+            fore_head_size_x,
             lips_pos_y,
-            lips_size_x,
+            lip_size_x,
             lip_upper_size_y,
             lip_lower_size_y,
             cheek_left_pos_x,
