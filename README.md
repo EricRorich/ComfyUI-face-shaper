@@ -1,6 +1,6 @@
 # ComfyUI-face-shaper
 
-A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline (with separate jaw and forehead controls), eyes, irises, eyebrows, nose (single merged object), lips (upper and lower with direction-specific scaling), chin, and cheeks. AT THE MOMENT IT WORKS ONLY WITH QWEN-IMAGE-EDIT-2511.
+A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline (with separate jaw and forehead controls), eyes (with independent rotation), irises, eyebrows, nose (single merged object), lips (upper and lower with direction-specific scaling), and cheeks. AT THE MOMENT IT WORKS ONLY WITH QWEN-IMAGE-EDIT-2511.
 
 <img src="Images/ComfyUI_01467_.png" alt="image alt" width="512">
 <img src="Images/ComfyUI_01517_.jpg" alt="image alt" width="512">
@@ -36,10 +36,12 @@ All parameters are exposed under the **required** section:
 | `eye_left_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale left eye height |
 | `eye_left_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate left eye horizontally |
 | `eye_left_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate left eye vertically |
+| `eye_left_rotation` | FLOAT | 0.0 | -45.0–45.0 | Rotate left eye around its centroid (degrees) |
 | `eye_right_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale right eye width |
 | `eye_right_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale right eye height |
 | `eye_right_pos_x` | FLOAT | 0.0 | -0.5–0.5 | Translate right eye horizontally |
 | `eye_right_pos_y` | FLOAT | 0.0 | -0.5–0.5 | Translate right eye vertically |
+| `eye_right_rotation` | FLOAT | 0.0 | -45.0–45.0 | Rotate right eye around its centroid (degrees) |
 
 ### Iris Controls (Separated)
 | Parameter | Type | Default | Range | Description |
@@ -66,12 +68,6 @@ All parameters are exposed under the **required** section:
 | `lips_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale both lips horizontally (shared) |
 | `lip_upper_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale upper lip upward from mouth midline |
 | `lip_lower_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale lower lip downward from mouth midline |
-
-### Chin Controls
-| Parameter | Type | Default | Range | Description |
-|-----------|------|---------|-------|-------------|
-| `chin_size_x` | FLOAT | 1.0 | 0.5–2.0 | Scale chin width |
-| `chin_size_y` | FLOAT | 1.0 | 0.5–2.0 | Scale chin height |
 
 ### Eyebrow Controls
 | Parameter | Type | Default | Range | Description |
@@ -117,6 +113,7 @@ This output can be used as:
    - Enable `transparent_background` for RGBA output with alpha channel
    - Increase `iris_left_size` and `iris_right_size` for larger irises
    - Adjust `eyebrow_left_pos_y` and `eyebrow_right_pos_y` to raise/lower eyebrows
+   - Use `eye_left_rotation` and `eye_right_rotation` to rotate eyes independently (useful for expression control)
    - Use `lips_size_x` to scale both lips horizontally together
    - Use `lip_upper_size_y` to make the upper lip fuller (scales upward from mouth midline)
    - Use `lip_lower_size_y` to adjust the lower lip (scales downward from mouth midline)
@@ -141,12 +138,17 @@ All size parameters are multipliers:
 
 ## Technical Details
 
-- **Coordinate extraction**: All paths extracted from Face_Mask_female.svg (1024×1024) with coordinates normalized to [0-1] range
-- **Recent coordinate updates**: Nose geometry updated to 11 points (from path46), lips naming corrected to match visual positions
+- **Coordinate extraction**: All paths extracted from Face_Mask_female.svg with viewBox (270.93331×270.93331) and coordinates normalized to [0-1] range
+- **Recent coordinate updates**: 
+  - Eyes updated with new geometry from SVG paths (path190/path188) with 16 points each for more realistic shape
+  - Nose geometry updated to 13 points (from path46)
+  - Lips naming corrected to match visual positions
+  - Chin geometry completely removed from the node
+- **Eye rotation**: Independent rotation controls for each eye, rotating around the eye's centroid
 - **Coordinate transform**: Relative coordinates (0-1 range) are converted to pixel coordinates using: 
   - `x = (rx - 0.5) * canvas_width * camera_distance + canvas_width / 2`
   - `y = (ry - 0.5) * canvas_height * camera_distance + canvas_height / 2`
-- **Feature transforms**: Each feature group (eyes, moustache, chin, outer_head, etc.) has its own transformation applied before pixel conversion to avoid cross-feature distortion
+- **Feature transforms**: Each feature group (eyes, eyebrows, nose, lips, outer_head, etc.) has its own transformation applied before pixel conversion to avoid cross-feature distortion
 - **Drawing method**: Uses PIL (Pillow) to draw polylines and circles, then converts to PyTorch tensor
 - **Per-feature scaling**: Scaling parameters are scoped to their respective features only
 
@@ -156,12 +158,11 @@ The node renders distinct SVG paths organized into feature groups:
 
 1. **Outer head** (21 points, closed) - Full face outline contour with per-region horizontal scaling (jaw, mid-face, forehead)
 2. **Cheeks** (left: 4 points, right: 4 points) - Cheek contours with automatic connections to outer head
-3. **Chin** (7 points) - Lower jaw polygon with scaling only
-4. **Lips** (2 closed shapes: upper: 11 points, lower: 13 points) - Mouth/lips area with direction-specific scaling
-5. **Eyes** (left: 7 points closed, right: 7 points closed) - Eye outlines
-6. **Irises** (left: circle, right: circle) - Pupil/iris circles
-7. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves
-8. **Nose** (11 points) - Single merged nose object updated from latest SVG
+3. **Lips** (2 closed shapes: upper: 11 points, lower: 13 points) - Mouth/lips area with direction-specific scaling
+4. **Eyes** (left: 16 points closed, right: 16 points closed) - Eye outlines with independent rotation controls
+5. **Irises** (left: circle, right: circle) - Pupil/iris circles
+6. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves with rotation controls
+7. **Nose** (13 points) - Single merged nose object updated from latest SVG
 
 ## Future Improvements
 
