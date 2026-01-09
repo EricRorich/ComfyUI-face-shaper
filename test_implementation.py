@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test script to verify the ears and nose tip implementation."""
+"""Test script to verify the updated ears and integrated nose tip implementation."""
 
 import sys
 sys.path.insert(0, '/home/runner/work/ComfyUI-face-shaper/ComfyUI-face-shaper')
@@ -10,20 +10,31 @@ def test_geometry_data():
     """Test that the geometry data is correct."""
     print("Testing geometry data...")
     
-    # Check that ear_left exists
+    # Check that ear_left exists with updated coordinates
     assert "ear_left" in FEMALE_FACE, "ear_left not found in FEMALE_FACE"
     assert len(FEMALE_FACE["ear_left"]) == 5, f"ear_left should have 5 points, got {len(FEMALE_FACE['ear_left'])}"
     
-    # Check that ear_right exists
+    # Verify ear_left has updated SVG coordinates
+    ear_left_first = FEMALE_FACE["ear_left"][0]
+    assert abs(ear_left_first[0] - 0.045475) < 0.001, f"ear_left first point x should be ~0.045475, got {ear_left_first[0]}"
+    
+    # Check that ear_right exists with updated coordinates
     assert "ear_right" in FEMALE_FACE, "ear_right not found in FEMALE_FACE"
     assert len(FEMALE_FACE["ear_right"]) == 5, f"ear_right should have 5 points, got {len(FEMALE_FACE['ear_right'])}"
     
-    # Check that nose_tip exists
-    assert "nose_tip" in FEMALE_FACE, "nose_tip not found in FEMALE_FACE"
-    assert len(FEMALE_FACE["nose_tip"]) == 5, f"nose_tip should have 5 points, got {len(FEMALE_FACE['nose_tip'])}"
+    # Verify ear_right has updated SVG coordinates
+    ear_right_first = FEMALE_FACE["ear_right"][0]
+    assert abs(ear_right_first[0] - 0.219108) < 0.001, f"ear_right first point x should be ~0.219108, got {ear_right_first[0]}"
+    
+    # Check that nose_tip geometry is REMOVED (no longer a separate geometry)
+    assert "nose_tip" not in FEMALE_FACE, "nose_tip should be removed from FEMALE_FACE (now integrated in nose)"
+    
+    # Check that nose still exists with 11 points
+    assert "nose" in FEMALE_FACE, "nose not found in FEMALE_FACE"
+    assert len(FEMALE_FACE["nose"]) == 11, f"nose should have 11 points, got {len(FEMALE_FACE['nose'])}"
     
     # Verify coordinates are normalized (0-1 range)
-    for key in ["ear_left", "ear_right", "nose_tip"]:
+    for key in ["ear_left", "ear_right", "nose"]:
         for x, y in FEMALE_FACE[key]:
             assert 0 <= x <= 1, f"{key}: x coordinate {x} out of range"
             assert 0 <= y <= 1, f"{key}: y coordinate {y} out of range"
@@ -31,7 +42,7 @@ def test_geometry_data():
     print("✓ Geometry data test passed")
 
 def test_input_types():
-    """Test that INPUT_TYPES includes the new parameters."""
+    """Test that INPUT_TYPES includes the correct parameters."""
     print("Testing INPUT_TYPES...")
     
     node = ComfyUIFaceShaper()
@@ -58,22 +69,18 @@ def test_input_types():
             assert param_def[1]["max"] == 2.0, f"{param} max should be 2.0"
             assert param_def[1]["step"] == 0.01, f"{param} step should be 0.01"
     
-    # Check nose_tip parameters
-    nose_tip_params = ["nose_tip_pos_y", "nose_tip_size_x", "nose_tip_size_y"]
-    for param in nose_tip_params:
-        assert param in required, f"{param} not found in INPUT_TYPES"
-        param_def = required[param]
-        assert param_def[0] == "FLOAT", f"{param} should be FLOAT"
-        if "pos" in param:
-            assert param_def[1]["default"] == 0.0, f"{param} default should be 0.0"
-            assert param_def[1]["min"] == -0.2, f"{param} min should be -0.2"
-            assert param_def[1]["max"] == 0.2, f"{param} max should be 0.2"
-            assert param_def[1]["step"] == 0.005, f"{param} step should be 0.005"
-        else:  # size params
-            assert param_def[1]["default"] == 1.0, f"{param} default should be 1.0"
-            assert param_def[1]["min"] == 0.5, f"{param} min should be 0.5"
-            assert param_def[1]["max"] == 2.0, f"{param} max should be 2.0"
-            assert param_def[1]["step"] == 0.01, f"{param} step should be 0.01"
+    # Check nose_tip_pos_y parameter (integrated control, no separate size controls)
+    assert "nose_tip_pos_y" in required, "nose_tip_pos_y not found in INPUT_TYPES"
+    param_def = required["nose_tip_pos_y"]
+    assert param_def[0] == "FLOAT", "nose_tip_pos_y should be FLOAT"
+    assert param_def[1]["default"] == 0.0, "nose_tip_pos_y default should be 0.0"
+    assert param_def[1]["min"] == -0.2, "nose_tip_pos_y min should be -0.2"
+    assert param_def[1]["max"] == 0.2, "nose_tip_pos_y max should be 0.2"
+    assert param_def[1]["step"] == 0.005, "nose_tip_pos_y step should be 0.005"
+    
+    # Verify nose_tip_size_x and nose_tip_size_y are REMOVED
+    assert "nose_tip_size_x" not in required, "nose_tip_size_x should be removed from INPUT_TYPES"
+    assert "nose_tip_size_y" not in required, "nose_tip_size_y should be removed from INPUT_TYPES"
     
     print("✓ INPUT_TYPES test passed")
 
@@ -83,17 +90,17 @@ def test_settings_list_length():
     
     # Count parameters in order:
     # Eyes: 8, Irises: 6, Head: 4, Lips: 4, Chin: 2, Cheeks: 4
-    # Ears: 8 (NEW), Eyebrows: 10, Nose: 3, Nose tip: 3 (NEW)
+    # Ears: 8, Eyebrows: 10, Nose: 3, Nose tip: 1 (only pos_y, sizes removed)
     # Camera: 5 (distance, pos_x, pos_y, fov_mm, line_thickness), Canvas: 2 (width, height)
-    # Total: 8+6+4+4+2+4+8+10+3+3+5+2 = 59 actual parameters
+    # Total: 8+6+4+4+2+4+8+10+3+1+5+2 = 57 actual parameters
     
-    # SETTINGS_LIST_LENGTH is set to 60 for future expansion (59 used + 1 reserved)
+    # SETTINGS_LIST_LENGTH is set to 60 for future expansion (57 used + 3 reserved)
     assert SETTINGS_LIST_LENGTH == 60, f"SETTINGS_LIST_LENGTH should be 60, got {SETTINGS_LIST_LENGTH}"
     
     print("✓ SETTINGS_LIST_LENGTH test passed")
 
 def test_draw_face_signature():
-    """Test that draw_face has all the new parameters."""
+    """Test that draw_face has the correct parameters."""
     print("Testing draw_face signature...")
     
     import inspect
@@ -101,7 +108,7 @@ def test_draw_face_signature():
     sig = inspect.signature(node.draw_face)
     params = list(sig.parameters.keys())
     
-    # Check new ear parameters
+    # Check ear parameters are present
     ear_params = [
         "ear_left_pos_x", "ear_left_pos_y", "ear_left_size_x", "ear_left_size_y",
         "ear_right_pos_x", "ear_right_pos_y", "ear_right_size_x", "ear_right_size_y"
@@ -109,10 +116,12 @@ def test_draw_face_signature():
     for param in ear_params:
         assert param in params, f"{param} not found in draw_face signature"
     
-    # Check new nose_tip parameters
-    nose_tip_params = ["nose_tip_pos_y", "nose_tip_size_x", "nose_tip_size_y"]
-    for param in nose_tip_params:
-        assert param in params, f"{param} not found in draw_face signature"
+    # Check nose_tip_pos_y parameter is present
+    assert "nose_tip_pos_y" in params, "nose_tip_pos_y not found in draw_face signature"
+    
+    # Verify nose_tip_size_x and nose_tip_size_y are REMOVED
+    assert "nose_tip_size_x" not in params, "nose_tip_size_x should be removed from draw_face signature"
+    assert "nose_tip_size_y" not in params, "nose_tip_size_y should be removed from draw_face signature"
     
     print("✓ draw_face signature test passed")
 
@@ -123,6 +132,7 @@ def test_basic_rendering():
     node = ComfyUIFaceShaper()
     
     # Call with default parameters (all zeros/ones as appropriate)
+    # Note: Removed nose_tip_size_x and nose_tip_size_y parameters
     try:
         result = node.draw_face(
             canvas_width=512,
@@ -147,7 +157,7 @@ def test_basic_rendering():
             eyebrow_right_size_x=1.0, eyebrow_right_size_y=1.0, eyebrow_right_rotation=0.0,
             eyebrow_right_pos_x=0.0, eyebrow_right_pos_y=0.0,
             nose_pos_y=0.0, nose_size_x=1.0, nose_size_y=1.0,
-            nose_tip_pos_y=0.0, nose_tip_size_x=1.0, nose_tip_size_y=1.0,
+            nose_tip_pos_y=0.0,  # Only position control, no size controls
             camera_distance=1.0, camera_pos_x=0.0, camera_pos_y=0.0,
             fov_mm=80.0,
             line_thickness=2.0,
@@ -162,8 +172,8 @@ def test_basic_rendering():
         assert tensor.shape[2] == 512, "Width should be 512"
         assert tensor.shape[3] == 3, "Should have 3 channels (RGB)"
         
-        # Check settings_list length (59 actual parameters in export list)
-        assert len(settings_list) == 59, f"settings_list should have 59 elements, got {len(settings_list)}"
+        # Check settings_list length (57 actual parameters in export list)
+        assert len(settings_list) == 57, f"settings_list should have 57 elements, got {len(settings_list)}"
         
         print("✓ Basic rendering test passed")
         
