@@ -22,11 +22,14 @@ app.registerExtension({
                 // Add a reset button to the node
                 this.addWidget("button", "Reset to Defaults", null, () => {
                     // Define the default values according to INPUT_TYPES
+                    // These must match the backend INPUT_TYPES defaults exactly
                     const defaults = {
                         "canvas_width": 1024,
                         "canvas_height": 1024,
                         "gender": "female",
                         "transparent_background": false,
+                        "debug_geometry": false,
+                        "debug_ears": false,
                         "eye_left_size_x": 1.0,
                         "eye_left_size_y": 1.0,
                         "eye_left_pos_x": 0.0,
@@ -55,6 +58,14 @@ app.registerExtension({
                         "cheek_left_pos_y": 0.0,
                         "cheek_right_pos_x": 0.0,
                         "cheek_right_pos_y": 0.0,
+                        "ear_left_pos_x": 0.0,
+                        "ear_left_pos_y": 0.0,
+                        "ear_left_size_x": 1.0,
+                        "ear_left_size_y": 1.0,
+                        "ear_right_pos_x": 0.0,
+                        "ear_right_pos_y": 0.0,
+                        "ear_right_size_x": 1.0,
+                        "ear_right_size_y": 1.0,
                         "eyebrow_left_size_x": 1.0,
                         "eyebrow_left_size_y": 1.0,
                         "eyebrow_left_rotation": 0.0,
@@ -68,6 +79,7 @@ app.registerExtension({
                         "nose_pos_y": 0.0,
                         "nose_size_x": 1.0,
                         "nose_size_y": 1.0,
+                        "nose_tip_pos_y": 0.0,
                         "camera_distance": 1.0,
                         "camera_pos_x": 0.0,
                         "camera_pos_y": 0.0,
@@ -75,10 +87,32 @@ app.registerExtension({
                         "line_thickness": 2.0,
                     };
                     
-                    // Reset all widgets to their default values
+                    // Clear settings_list input if it exists to avoid overriding reset values
+                    for (const input of this.inputs || []) {
+                        if (input.name === "settings_list") {
+                            // Disconnect the input
+                            if (input.link != null) {
+                                const link = app.graph.links[input.link];
+                                if (link) {
+                                    const originNode = app.graph.getNodeById(link.origin_id);
+                                    if (originNode) {
+                                        originNode.disconnectOutput(link.origin_slot);
+                                    }
+                                }
+                                input.link = null;
+                            }
+                        }
+                    }
+                    
+                    // Reset all widgets to their default values dynamically
+                    // This ensures we catch all widgets even if new ones are added
                     for (const widget of this.widgets) {
                         if (widget.name in defaults) {
                             widget.value = defaults[widget.name];
+                            // Trigger any callbacks/updates for this widget
+                            if (widget.callback) {
+                                widget.callback(widget.value);
+                            }
                         }
                     }
                     
@@ -89,6 +123,17 @@ app.registerExtension({
                     
                     // Mark the graph as changed so ComfyUI knows to re-execute
                     app.graph.setDirtyCanvas(true, true);
+                    if (this.graph) {
+                        this.graph.setDirtyCanvas(true, true);
+                    }
+                    
+                    // Mark the node as needing execution
+                    this.setDirtyCanvas(true, true);
+                    
+                    // Queue a prompt to execute the workflow with new values
+                    if (app.queuePrompt) {
+                        app.queuePrompt(0);
+                    }
                 });
                 
                 return result;

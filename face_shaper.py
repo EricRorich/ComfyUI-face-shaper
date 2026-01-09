@@ -33,10 +33,209 @@ Key improvements in this version:
 
 from typing import Dict, List, Tuple
 import math
+import re
 
 import numpy as np
 import torch
 from PIL import Image, ImageDraw
+
+
+def _parse_svg_path_to_polylines(path_d: str, segments_per_curve: int = 32) -> List[List[Tuple[float, float]]]:
+    """
+    Parse an SVG path string into a list of polylines, preserving subpaths.
+    
+    Supports M/m, L/l, H/h, V/v, Z/z, C/c, Q/q commands.
+    Curves (C, Q) are sampled to polylines with specified segments.
+    
+    Args:
+        path_d: SVG path 'd' attribute string
+        segments_per_curve: Number of line segments to use per curve (≥24 recommended)
+        
+    Returns:
+        List of polylines, where each polyline is a list of (x, y) tuples.
+        Each 'M' command starts a new subpath/polyline.
+    """
+    # Tokenize the path string - split on command letters while keeping them
+    tokens = re.findall(r'[MmLlHhVvZzCcQqSsTtAa]|[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?', path_d)
+    
+    polylines = []
+    current_polyline = []
+    current_pos = (0.0, 0.0)
+    subpath_start = (0.0, 0.0)
+    last_command = None
+    i = 0
+    
+    while i < len(tokens):
+        token = tokens[i]
+        
+        # Check if this is a command letter
+        if token in 'MmLlHhVvZzCcQqSsTtAa':
+            command = token
+            i += 1
+            
+            # Process command
+            if command in 'Mm':  # Move
+                # M/m starts a new subpath
+                if current_polyline:
+                    polylines.append(current_polyline)
+                current_polyline = []
+                
+                # Get coordinates
+                x = float(tokens[i])
+                y = float(tokens[i + 1])
+                i += 2
+                
+                if command == 'm':  # relative
+                    x += current_pos[0]
+                    y += current_pos[1]
+                
+                current_pos = (x, y)
+                subpath_start = current_pos
+                current_polyline.append(current_pos)
+                
+            elif command in 'Ll':  # Line to
+                x = float(tokens[i])
+                y = float(tokens[i + 1])
+                i += 2
+                
+                if command == 'l':  # relative
+                    x += current_pos[0]
+                    y += current_pos[1]
+                
+                current_pos = (x, y)
+                current_polyline.append(current_pos)
+                
+            elif command in 'Hh':  # Horizontal line
+                x = float(tokens[i])
+                i += 1
+                
+                if command == 'h':  # relative
+                    x += current_pos[0]
+                
+                current_pos = (x, current_pos[1])
+                current_polyline.append(current_pos)
+                
+            elif command in 'Vv':  # Vertical line
+                y = float(tokens[i])
+                i += 1
+                
+                if command == 'v':  # relative
+                    y += current_pos[1]
+                
+                current_pos = (current_pos[0], y)
+                current_polyline.append(current_pos)
+                
+            elif command in 'Zz':  # Close path
+                # Close the path by connecting to subpath start
+                if current_polyline and current_polyline[-1] != subpath_start:
+                    current_polyline.append(subpath_start)
+                # Don't start a new polyline yet - Z might be followed by more commands
+                
+            elif command in 'Cc':  # Cubic Bezier
+                # Get control points and end point
+                x1 = float(tokens[i])
+                y1 = float(tokens[i + 1])
+                x2 = float(tokens[i + 2])
+                y2 = float(tokens[i + 3])
+                x = float(tokens[i + 4])
+                y = float(tokens[i + 5])
+                i += 6
+                
+                if command == 'c':  # relative
+                    x1 += current_pos[0]
+                    y1 += current_pos[1]
+                    x2 += current_pos[0]
+                    y2 += current_pos[1]
+                    x += current_pos[0]
+                    y += current_pos[1]
+                
+                # Sample the cubic Bezier curve
+                p0 = current_pos
+                p1 = (x1, y1)
+                p2 = (x2, y2)
+                p3 = (x, y)
+                
+                for j in range(1, segments_per_curve + 1):
+                    t = j / segments_per_curve
+                    # Cubic Bezier formula
+                    t1 = 1 - t
+                    bx = t1**3 * p0[0] + 3 * t1**2 * t * p1[0] + 3 * t1 * t**2 * p2[0] + t**3 * p3[0]
+                    by = t1**3 * p0[1] + 3 * t1**2 * t * p1[1] + 3 * t1 * t**2 * p2[1] + t**3 * p3[1]
+                    current_polyline.append((bx, by))
+                
+                current_pos = (x, y)
+                
+            elif command in 'Qq':  # Quadratic Bezier
+                # Get control point and end point
+                x1 = float(tokens[i])
+                y1 = float(tokens[i + 1])
+                x = float(tokens[i + 2])
+                y = float(tokens[i + 3])
+                i += 4
+                
+                if command == 'q':  # relative
+                    x1 += current_pos[0]
+                    y1 += current_pos[1]
+                    x += current_pos[0]
+                    y += current_pos[1]
+                
+                # Sample the quadratic Bezier curve
+                p0 = current_pos
+                p1 = (x1, y1)
+                p2 = (x, y)
+                
+                for j in range(1, segments_per_curve + 1):
+                    t = j / segments_per_curve
+                    # Quadratic Bezier formula
+                    t1 = 1 - t
+                    bx = t1**2 * p0[0] + 2 * t1 * t * p1[0] + t**2 * p2[0]
+                    by = t1**2 * p0[1] + 2 * t1 * t * p1[1] + t**2 * p2[1]
+                    current_polyline.append((bx, by))
+                
+                current_pos = (x, y)
+                
+            else:
+                # Unsupported command (S, T, A) - skip for now
+                # Could implement if needed
+                pass
+            
+            last_command = command
+        else:
+            # This shouldn't happen with proper tokenization
+            i += 1
+    
+    # Add final polyline if any
+    if current_polyline:
+        polylines.append(current_polyline)
+    
+    return polylines
+
+
+def _normalize_svg_coordinates(polylines: List[List[Tuple[float, float]]], 
+                               viewbox_x: float, viewbox_y: float, 
+                               viewbox_w: float, viewbox_h: float) -> List[List[Tuple[float, float]]]:
+    """
+    Normalize SVG coordinates from viewBox space to [0, 1] range.
+    
+    Args:
+        polylines: List of polylines in viewBox coordinates
+        viewbox_x, viewbox_y: ViewBox origin (typically 0, 0)
+        viewbox_w, viewbox_h: ViewBox dimensions
+        
+    Returns:
+        List of polylines with normalized coordinates in [0, 1] range
+    """
+    normalized = []
+    for polyline in polylines:
+        norm_polyline = []
+        for x, y in polyline:
+            # Normalize to [0, 1] range
+            norm_x = (x - viewbox_x) / viewbox_w
+            norm_y = (y - viewbox_y) / viewbox_h
+            norm_polyline.append((norm_x, norm_y))
+        normalized.append(norm_polyline)
+    return normalized
+
 
 # relative coordinates for female face (0–1 range)
 # Extracted from Face_Mask_female.svg (1024x1024 normalized coordinates)
@@ -170,23 +369,29 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.571659, 0.619195),  # [11]
         (0.544459, 0.542654),  # [12]
     ],
-    # Ears (extracted from Face_Mask_female.svg: path184 contains both ears)
-    # Updated coordinates from SVG, viewBox-normalized (270.93331x270.93331)
+    # Ears (extracted from Face_Mask_female.svg: path184 contains both ears as 2 subpaths)
+    # SVG path: "m 50.800012,131.23334 -4.233333,-29.63333 h -8.466667 l -4.233333,33.86667 8.466667,33.86666 h 8.466666 z m 169.333288,0 4.23333,-29.63333 h 8.46667 l 4.23333,33.86667 -8.46667,33.86666 h -8.46666 z"
+    # Normalized using viewBox (270.93331x270.93331)
+    # Each ear is stored as a list of polylines (subpaths)
     # ear_left bbox: minx=0.140625 (<0.5✓), maxx=0.187500, miny=0.484375, maxy=0.609375
     "ear_left": [
-        (0.187500, 0.484375),
-        (0.156250, 0.484375),
-        (0.140625, 0.609375),
-        (0.171875, 0.609375),
-        (0.187500, 0.484375),  # Close the polyline
+        [
+            (0.187500, 0.484375),
+            (0.156250, 0.484375),
+            (0.140625, 0.609375),
+            (0.171875, 0.609375),
+            (0.187500, 0.484375),  # Closed path (Z command)
+        ]
     ],
     # ear_right bbox: minx=0.796875 (>0.5✓), maxx=0.843750, miny=0.609375, maxy=0.734375
     "ear_right": [
-        (0.796875, 0.609375),
-        (0.828125, 0.609375),
-        (0.843750, 0.734375),
-        (0.812500, 0.734375),
-        (0.796875, 0.609375),  # Close the polyline
+        [
+            (0.796875, 0.609375),
+            (0.828125, 0.609375),
+            (0.843750, 0.734375),
+            (0.812500, 0.734375),
+            (0.796875, 0.609375),  # Closed path (Z command)
+        ]
     ],
 }
 
@@ -243,6 +448,7 @@ class ComfyUIFaceShaper:
                 "gender": (["female", "male"],),
                 "transparent_background": ("BOOLEAN", {"default": False}),
                 "debug_geometry": ("BOOLEAN", {"default": False}),
+                "debug_ears": ("BOOLEAN", {"default": False}),
                 # Eyes
                 "eye_left_size_x": (
                     "FLOAT",
@@ -487,6 +693,7 @@ class ComfyUIFaceShaper:
         gender: str,
         transparent_background: bool,
         debug_geometry: bool,
+        debug_ears: bool,
         eye_left_size_x: float,
         eye_left_size_y: float,
         eye_left_pos_x: float,
@@ -772,29 +979,74 @@ class ComfyUIFaceShaper:
 
         # Draw ears with scaling and positioning (no rotation)
         # Ears are drawn after head_outline and before cheeks for proper layering
-        if "ear_left" in face_points:
-            ear_left = transform_polygon(
-                face_points["ear_left"],
-                ear_left_size_x,
-                ear_left_size_y,
-                ear_left_pos_x,
-                ear_left_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in ear_left]
-            if len(pixel_points) >= 2:
-                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+        # Ears are now stored as lists of polylines to preserve subpaths from SVG
+        if "ear_left" in face_points and isinstance(face_points["ear_left"], list):
+            ear_polylines = face_points["ear_left"]
+            
+            # Debug logging
+            if debug_ears:
+                total_points = sum(len(poly) for poly in ear_polylines)
+                xs = [x for poly in ear_polylines for x, y in poly]
+                ys = [y for poly in ear_polylines for x, y in poly]
+                print(f"ear_left: {len(ear_polylines)} subpath(s), {total_points} points total, "
+                      f"bbox=(minx={min(xs):.6f}, maxx={max(xs):.6f}, miny={min(ys):.6f}, maxy={max(ys):.6f})")
+            
+            # Transform and draw each subpath
+            for polyline in ear_polylines:
+                if len(polyline) < 2:
+                    continue
+                    
+                # Transform this polyline
+                transformed = transform_polygon(
+                    polyline,
+                    ear_left_size_x,
+                    ear_left_size_y,
+                    ear_left_pos_x,
+                    ear_left_pos_y,
+                )
+                
+                # Convert to pixels
+                pixel_points = [to_pixel(pt) for pt in transformed]
+                
+                # Draw with optional debug coloring
+                if debug_ears:
+                    draw.line(pixel_points, fill=(255, 0, 0), width=max(stroke_width, 3))
+                else:
+                    draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
         
-        if "ear_right" in face_points:
-            ear_right = transform_polygon(
-                face_points["ear_right"],
-                ear_right_size_x,
-                ear_right_size_y,
-                ear_right_pos_x,
-                ear_right_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in ear_right]
-            if len(pixel_points) >= 2:
-                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+        if "ear_right" in face_points and isinstance(face_points["ear_right"], list):
+            ear_polylines = face_points["ear_right"]
+            
+            # Debug logging
+            if debug_ears:
+                total_points = sum(len(poly) for poly in ear_polylines)
+                xs = [x for poly in ear_polylines for x, y in poly]
+                ys = [y for poly in ear_polylines for x, y in poly]
+                print(f"ear_right: {len(ear_polylines)} subpath(s), {total_points} points total, "
+                      f"bbox=(minx={min(xs):.6f}, maxx={max(xs):.6f}, miny={min(ys):.6f}, maxy={max(ys):.6f})")
+            
+            # Transform and draw each subpath
+            for polyline in ear_polylines:
+                if len(polyline) < 2:
+                    continue
+                    
+                # Transform this polyline
+                transformed = transform_polygon(
+                    polyline,
+                    ear_right_size_x,
+                    ear_right_size_y,
+                    ear_right_pos_x,
+                    ear_right_pos_y,
+                )
+                
+                # Convert to pixels
+                pixel_points = [to_pixel(pt) for pt in transformed]
+                
+                # Draw with optional debug coloring
+                if debug_ears:
+                    draw.line(pixel_points, fill=(0, 0, 255), width=max(stroke_width, 3))
+                else:
+                    draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw chin with scaling only (no positioning)
         if "chin" in face_points:
