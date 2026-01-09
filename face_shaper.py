@@ -167,21 +167,25 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.571659, 0.619195),
         (0.544459, 0.542654),
     ],
-    # Ears (extracted from Face_Mask_female.svg layer11: path185 and path184)
-    # Updated coordinates from latest SVG, viewBox-normalized (1024x1024)
+    # Ears (extracted from Face_Mask_female.svg: path185=ear_right, path184=ear_left)
+    # Updated coordinates from UPDATED SVG, viewBox-normalized (270.93331x270.93331)
+    # ear_right bbox: minx=0.796875 (>0.5✓), maxx=0.890625, miny=0.375000, maxy=0.625000
     "ear_right": [
-        (0.219108, 0.115755),
-        (0.227376, 0.099219),
-        (0.235645, 0.099219),
-        (0.219108, 0.161230),
-        (0.210840, 0.165365),
+        (0.828125, 0.437500),
+        (0.859375, 0.375000),
+        (0.890625, 0.375000),
+        (0.828125, 0.609375),
+        (0.796875, 0.625000),
+        (0.828125, 0.437500),
     ],
+    # ear_left bbox: minx=0.109375 (<0.5✓), maxx=0.203125, miny=0.375000, maxy=0.625000
     "ear_left": [
-        (0.045475, 0.115755),
-        (0.037207, 0.099219),
-        (0.028939, 0.099219),
-        (0.045475, 0.161230),
-        (0.053744, 0.165365),
+        (0.171875, 0.437500),
+        (0.140625, 0.375000),
+        (0.109375, 0.375000),
+        (0.171875, 0.609375),
+        (0.203125, 0.625000),
+        (0.171875, 0.437500),
     ],
 }
 
@@ -237,6 +241,7 @@ class ComfyUIFaceShaper:
                 "canvas_height": ("INT", {"default": 1024, "min": 256, "max": 2048}),
                 "gender": (["female", "male"],),
                 "transparent_background": ("BOOLEAN", {"default": False}),
+                "debug_geometry": ("BOOLEAN", {"default": False}),
                 # Eyes
                 "eye_left_size_x": (
                     "FLOAT",
@@ -480,6 +485,7 @@ class ComfyUIFaceShaper:
         canvas_height: int,
         gender: str,
         transparent_background: bool,
+        debug_geometry: bool,
         eye_left_size_x: float,
         eye_left_size_y: float,
         eye_left_pos_x: float,
@@ -601,6 +607,20 @@ class ComfyUIFaceShaper:
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
+
+        # Debug geometry output
+        if debug_geometry:
+            print("\n=== Debug Geometry Summary ===")
+            for feature_name in ["ear_left", "ear_right", "nose"]:
+                if feature_name in face_points:
+                    points = face_points[feature_name]
+                    count = len(points)
+                    xs = [x for x, y in points]
+                    ys = [y for x, y in points]
+                    minx, maxx = min(xs), max(xs)
+                    miny, maxy = min(ys), max(ys)
+                    print(f"{feature_name}: count={count}, bbox=(minx={minx:.6f}, maxx={maxx:.6f}, miny={miny:.6f}, maxy={maxy:.6f})")
+            print("==============================\n")
 
         # Create a blank canvas - RGBA for transparent background, RGB for white background.
         if transparent_background:
@@ -822,22 +842,39 @@ class ComfyUIFaceShaper:
                 0.0,
                 nose_pos_y,
             )
-            # Then apply nose_tip_pos_y to the 3 middle-most, lowest-Y points (indices 3, 5, 7)
-            # These are the tip points that need independent Y adjustment:
-            #   Index 3: (0.455541, 0.655884) - left tip
-            #   Index 5: (0.500000, 0.671066) - center tip (lowest point)
-            #   Index 7: (0.544459, 0.655884) - right tip
-            nose_tip_indices = {3, 5, 7}
+            
+            # Algorithmically select the 3 tip points (lowest on face, most central)
+            # Sort by: 1) ry descending (lowest on face first), then 2) abs(rx-0.5) ascending (most central)
+            face_center_x = 0.5
+            indexed_points = [(idx, x, y) for idx, (x, y) in enumerate(nose)]
+            sorted_points = sorted(indexed_points, key=lambda p: (-p[2], abs(p[1] - face_center_x)))
+            nose_tip_indices = {p[0] for p in sorted_points[:3]}
+            
+            # Apply nose_tip_pos_y to the selected 3 tip points only
             nose_with_tip = []
             for idx, (x, y) in enumerate(nose):
                 if idx in nose_tip_indices:
-                    # Apply tip position offset only to these points
+                    # Apply tip position offset (positive moves down in y-down coordinate system)
                     nose_with_tip.append((x, y + nose_tip_pos_y))
                 else:
                     nose_with_tip.append((x, y))
             
+            # Draw the nose
             pixel_points = [to_pixel(pt) for pt in nose_with_tip]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
+            
+            # Optional: Mark nose tip points when debug_geometry is enabled
+            if debug_geometry:
+                for idx, (x, y) in enumerate(nose_with_tip):
+                    if idx in nose_tip_indices:
+                        px, py = to_pixel((x, y))
+                        # Draw a small circle marker (radius 3 pixels)
+                        marker_radius = 3
+                        draw.ellipse(
+                            [px - marker_radius, py - marker_radius, px + marker_radius, py + marker_radius],
+                            fill=(255, 0, 0),  # Red marker
+                            outline=(255, 0, 0)
+                        )
 
         # Draw lips (upper and lower) with direction-specific scaling
         # Mouth midline is approximately at y = 0.757394
