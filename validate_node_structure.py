@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Simple validation script to verify the node loads and renders without errors.
-This script does NOT require numpy, torch, or PIL - it just validates the code structure.
+This script validates code structure without importing the actual node
+(which would require numpy, torch, and PIL dependencies).
 """
 
 import sys
