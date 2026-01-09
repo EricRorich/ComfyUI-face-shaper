@@ -47,6 +47,7 @@ def test_default_render():
         iris_right_size=1.0, iris_right_pos_x=0.0, iris_right_pos_y=0.0,
         eyebrow_left_size_x=1.0, eyebrow_left_size_y=1.0, eyebrow_left_pos_x=0.0, eyebrow_left_pos_y=0.0, eyebrow_left_rotation=0.0,
         eyebrow_right_size_x=1.0, eyebrow_right_size_y=1.0, eyebrow_right_pos_x=0.0, eyebrow_right_pos_y=0.0, eyebrow_right_rotation=0.0,
+        cheeks_enabled=True,
         cheek_left_pos_x=0.0, cheek_left_pos_y=0.0,
         cheek_right_pos_x=0.0, cheek_right_pos_y=0.0,
         nose_pos_y=0.0, nose_size_x=1.0, nose_size_y=1.0,
@@ -88,6 +89,7 @@ def test_nose_tip_adjustment():
         iris_right_size=1.0, iris_right_pos_x=0.0, iris_right_pos_y=0.0,
         eyebrow_left_size_x=1.0, eyebrow_left_size_y=1.0, eyebrow_left_pos_x=0.0, eyebrow_left_pos_y=0.0, eyebrow_left_rotation=0.0,
         eyebrow_right_size_x=1.0, eyebrow_right_size_y=1.0, eyebrow_right_pos_x=0.0, eyebrow_right_pos_y=0.0, eyebrow_right_rotation=0.0,
+        cheeks_enabled=True,
         cheek_left_pos_x=0.0, cheek_left_pos_y=0.0,
         cheek_right_pos_x=0.0, cheek_right_pos_y=0.0,
         nose_pos_y=0.0, nose_size_x=1.0, nose_size_y=1.0,
@@ -128,6 +130,7 @@ def test_debug_geometry():
         iris_right_size=1.0, iris_right_pos_x=0.0, iris_right_pos_y=0.0,
         eyebrow_left_size_x=1.0, eyebrow_left_size_y=1.0, eyebrow_left_pos_x=0.0, eyebrow_left_pos_y=0.0, eyebrow_left_rotation=0.0,
         eyebrow_right_size_x=1.0, eyebrow_right_size_y=1.0, eyebrow_right_pos_x=0.0, eyebrow_right_pos_y=0.0, eyebrow_right_rotation=0.0,
+        cheeks_enabled=True,
         cheek_left_pos_x=0.0, cheek_left_pos_y=0.0,
         cheek_right_pos_x=0.0, cheek_right_pos_y=0.0,
         nose_pos_y=0.0, nose_size_x=1.0, nose_size_y=1.0,
@@ -169,6 +172,7 @@ def test_eye_rotation():
         iris_right_size=1.0, iris_right_pos_x=0.0, iris_right_pos_y=0.0,
         eyebrow_left_size_x=1.0, eyebrow_left_size_y=1.0, eyebrow_left_pos_x=0.0, eyebrow_left_pos_y=0.0, eyebrow_left_rotation=0.0,
         eyebrow_right_size_x=1.0, eyebrow_right_size_y=1.0, eyebrow_right_pos_x=0.0, eyebrow_right_pos_y=0.0, eyebrow_right_rotation=0.0,
+        cheeks_enabled=True,
         cheek_left_pos_x=0.0, cheek_left_pos_y=0.0,
         cheek_right_pos_x=0.0, cheek_right_pos_y=0.0,
         nose_pos_y=0.0, nose_size_x=1.0, nose_size_y=1.0,
@@ -182,6 +186,47 @@ def test_eye_rotation():
     save_tensor_as_image(tensor, '/tmp/face_eye_rotation.png')
     print("✓ Eye rotation test passed")
 
+def test_cheeks_disabled():
+    """Test rendering with cheeks disabled."""
+    print("\nTesting with cheeks disabled...")
+    node = ComfyUIFaceShaper()
+    
+    result = node.draw_face(
+        canvas_width=1024,
+        canvas_height=1024,
+        transparent_background=False,
+        line_thickness=2.0,
+        gender="female",
+        fov_mm=80.0,
+        camera_distance=1.0,
+        camera_pos_x=0.0,
+        camera_pos_y=0.0,
+        head_size_x=1.0,
+        head_size_y=1.0,
+        jaw_size_x=1.0,
+        fore_head_size_x=1.0,
+        eye_left_size_x=1.0, eye_left_size_y=1.0, eye_left_pos_x=0.0, eye_left_pos_y=0.0,
+        eye_left_rotation=0.0,
+        eye_right_size_x=1.0, eye_right_size_y=1.0, eye_right_pos_x=0.0, eye_right_pos_y=0.0,
+        eye_right_rotation=0.0,
+        iris_left_size=1.0, iris_left_pos_x=0.0, iris_left_pos_y=0.0,
+        iris_right_size=1.0, iris_right_pos_x=0.0, iris_right_pos_y=0.0,
+        eyebrow_left_size_x=1.0, eyebrow_left_size_y=1.0, eyebrow_left_pos_x=0.0, eyebrow_left_pos_y=0.0, eyebrow_left_rotation=0.0,
+        eyebrow_right_size_x=1.0, eyebrow_right_size_y=1.0, eyebrow_right_pos_x=0.0, eyebrow_right_pos_y=0.0, eyebrow_right_rotation=0.0,
+        cheeks_enabled=False,  # Disable cheeks
+        cheek_left_pos_x=0.0, cheek_left_pos_y=0.0,
+        cheek_right_pos_x=0.0, cheek_right_pos_y=0.0,
+        nose_pos_y=0.0, nose_size_x=1.0, nose_size_y=1.0,
+        nose_tip_pos_y=0.0,
+        lips_pos_y=0.0, lip_size_x=1.0,
+        lip_upper_size_y=1.0, lip_lower_size_y=1.0,
+        settings_list=None
+    )
+    
+    tensor, settings_list = result
+    save_tensor_as_image(tensor, '/tmp/face_no_cheeks.png')
+    print("✓ Cheeks disabled test passed")
+
 if __name__ == "__main__":
     print("Running render tests...\n")
     
@@ -189,6 +234,7 @@ if __name__ == "__main__":
     test_nose_tip_adjustment()
     test_debug_geometry()
     test_eye_rotation()
+    test_cheeks_disabled()
     
     print("\n✓ All render tests completed!")
     print("\nGenerated images:")
@@ -196,3 +242,4 @@ if __name__ == "__main__":
     print("  /tmp/face_nose_tip_down.png - Nose tip adjusted down (+0.1)")
     print("  /tmp/face_no_debug.png - Normal render (debug_geometry removed)")
     print("  /tmp/face_eye_rotation.png - Eye rotation test (left +15°, right -15°)")
+    print("  /tmp/face_no_cheeks.png - Cheeks disabled test")
