@@ -5,15 +5,13 @@ This module implements a custom node that draws a stylized facial mask based on
 SVG‑derived coordinates extracted from Face_Mask_female.svg (1024×1024). Users 
 can adjust the positions and sizes of distinct facial features including:
 outer head outline, eyes, irises, eyebrows, nose (single merged object with 
-integrated tip control), ears (left and right), lips (upper and lower with 
-direction-specific scaling), chin, and cheeks. All coordinates are normalized 
-to [0-1] range. Users can select a gender preset (currently both genders use 
-the same coordinates), change the canvas size and camera distance, and control 
-the line thickness. The output is black lines on either a white or transparent 
-background as a tensor compatible with ComfyUI workflows.
+integrated tip control), lips (upper and lower with direction-specific scaling), 
+chin, and cheeks. All coordinates are normalized to [0-1] range. Users can select 
+a gender preset (currently both genders use the same coordinates), change the canvas 
+size and camera distance, and control the line thickness. The output is black lines 
+on either a white or transparent background as a tensor compatible with ComfyUI workflows.
 
 Key improvements in this version:
-- Updated ear geometry with refreshed SVG-derived coordinates
 - Nose tip now integrated within nose polyline (no separate geometry)
 - nose_tip_pos_y controls only the 3 middle-most, lowest-Y points of nose
 - Removed obsolete nose_tip size controls (nose_tip_size_x, nose_tip_size_y)
@@ -369,30 +367,6 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.571659, 0.619195),  # [11]
         (0.544459, 0.542654),  # [12]
     ],
-    # Ears (extracted from Face_Mask_female.svg: path184 contains both ears as 2 subpaths)
-    # SVG path: "m 50.800012,131.23334 -4.233333,-29.63333 h -8.466667 l -4.233333,33.86667 8.466667,33.86666 h 8.466666 z m 169.333288,0 4.23333,-29.63333 h 8.46667 l 4.23333,33.86667 -8.46667,33.86666 h -8.46666 z"
-    # Normalized using viewBox (270.93331x270.93331)
-    # Each ear is stored as a list of polylines (subpaths)
-    # ear_left bbox: minx=0.140625 (<0.5✓), maxx=0.187500, miny=0.484375, maxy=0.609375
-    "ear_left": [
-        [
-            (0.187500, 0.484375),
-            (0.156250, 0.484375),
-            (0.140625, 0.609375),
-            (0.171875, 0.609375),
-            (0.187500, 0.484375),  # Closed path (Z command)
-        ]
-    ],
-    # ear_right bbox: minx=0.796875 (>0.5✓), maxx=0.843750, miny=0.609375, maxy=0.734375
-    "ear_right": [
-        [
-            (0.796875, 0.609375),
-            (0.828125, 0.609375),
-            (0.843750, 0.734375),
-            (0.812500, 0.734375),
-            (0.796875, 0.609375),  # Closed path (Z command)
-        ]
-    ],
 }
 
 # Iris data is kept separate because irises are drawn as circles.
@@ -408,7 +382,7 @@ FEMALE_FACE_IRISES = {
 }
 
 # Number of parameters in settings_list (for import/export functionality)
-# Set to 60 to allow for future expansion (currently 57 parameters are used)
+# Set to 60 to allow for future expansion (currently 48 parameters are used)
 SETTINGS_LIST_LENGTH = 60
 
 # Cheek connection points (hardcoded from SVG coordinates)
@@ -448,7 +422,6 @@ class ComfyUIFaceShaper:
                 "gender": (["female", "male"],),
                 "transparent_background": ("BOOLEAN", {"default": False}),
                 "debug_geometry": ("BOOLEAN", {"default": False}),
-                "debug_ears": ("BOOLEAN", {"default": False}),
                 # Eyes
                 "eye_left_size_x": (
                     "FLOAT",
@@ -567,39 +540,6 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
                 ),
-                # Ears (near cheeks/eyebrows)
-                "ear_left_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
-                ),
-                "ear_left_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
-                ),
-                "ear_left_size_x": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "ear_left_size_y": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "ear_right_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
-                ),
-                "ear_right_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
-                ),
-                "ear_right_size_x": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "ear_right_size_y": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
                 # Eyebrows
                 "eyebrow_left_size_x": (
                     "FLOAT",
@@ -693,7 +633,6 @@ class ComfyUIFaceShaper:
         gender: str,
         transparent_background: bool,
         debug_geometry: bool,
-        debug_ears: bool,
         eye_left_size_x: float,
         eye_left_size_y: float,
         eye_left_pos_x: float,
@@ -722,14 +661,6 @@ class ComfyUIFaceShaper:
         cheek_left_pos_y: float,
         cheek_right_pos_x: float,
         cheek_right_pos_y: float,
-        ear_left_pos_x: float,
-        ear_left_pos_y: float,
-        ear_left_size_x: float,
-        ear_left_size_y: float,
-        ear_right_pos_x: float,
-        ear_right_pos_y: float,
-        ear_right_size_x: float,
-        ear_right_size_y: float,
         eyebrow_left_size_x: float,
         eyebrow_left_size_y: float,
         eyebrow_left_rotation: float,
@@ -782,36 +713,28 @@ class ComfyUIFaceShaper:
             cheek_left_pos_y = settings_list[25]
             cheek_right_pos_x = settings_list[26]
             cheek_right_pos_y = settings_list[27]
-            ear_left_pos_x = settings_list[28]
-            ear_left_pos_y = settings_list[29]
-            ear_left_size_x = settings_list[30]
-            ear_left_size_y = settings_list[31]
-            ear_right_pos_x = settings_list[32]
-            ear_right_pos_y = settings_list[33]
-            ear_right_size_x = settings_list[34]
-            ear_right_size_y = settings_list[35]
-            eyebrow_left_size_x = settings_list[36]
-            eyebrow_left_size_y = settings_list[37]
-            eyebrow_left_rotation = settings_list[38]
-            eyebrow_left_pos_x = settings_list[39]
-            eyebrow_left_pos_y = settings_list[40]
-            eyebrow_right_size_x = settings_list[41]
-            eyebrow_right_size_y = settings_list[42]
-            eyebrow_right_rotation = settings_list[43]
-            eyebrow_right_pos_x = settings_list[44]
-            eyebrow_right_pos_y = settings_list[45]
-            nose_pos_y = settings_list[46]
-            nose_size_x = settings_list[47]
-            nose_size_y = settings_list[48]
-            nose_tip_pos_y = settings_list[49]
-            camera_distance = settings_list[50]
-            camera_pos_x = settings_list[51]
-            camera_pos_y = settings_list[52]
-            fov_mm = settings_list[53]
-            line_thickness = settings_list[54]
-            # Note: canvas_width/canvas_height (indices 55-56) are exported but not imported
+            eyebrow_left_size_x = settings_list[28]
+            eyebrow_left_size_y = settings_list[29]
+            eyebrow_left_rotation = settings_list[30]
+            eyebrow_left_pos_x = settings_list[31]
+            eyebrow_left_pos_y = settings_list[32]
+            eyebrow_right_size_x = settings_list[33]
+            eyebrow_right_size_y = settings_list[34]
+            eyebrow_right_rotation = settings_list[35]
+            eyebrow_right_pos_x = settings_list[36]
+            eyebrow_right_pos_y = settings_list[37]
+            nose_pos_y = settings_list[38]
+            nose_size_x = settings_list[39]
+            nose_size_y = settings_list[40]
+            nose_tip_pos_y = settings_list[41]
+            camera_distance = settings_list[42]
+            camera_pos_x = settings_list[43]
+            camera_pos_y = settings_list[44]
+            fov_mm = settings_list[45]
+            line_thickness = settings_list[46]
+            # Note: canvas_width/canvas_height (indices 47-48) are exported but not imported
             # as they are always provided as direct parameters to the method
-            # Total: 57 parameters (55 feature controls + 2 canvas dimensions)
+            # Total: 48 parameters (46 feature controls + 2 canvas dimensions)
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
@@ -819,7 +742,7 @@ class ComfyUIFaceShaper:
         # Debug geometry output
         if debug_geometry:
             print("\n=== Debug Geometry Summary ===")
-            for feature_name in ["ear_left", "ear_right", "nose"]:
+            for feature_name in ["nose"]:
                 if feature_name in face_points:
                     points = face_points[feature_name]
                     count = len(points)
@@ -976,77 +899,6 @@ class ComfyUIFaceShaper:
             
             pixel_points = [to_pixel(pt) for pt in outer_head]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-
-        # Draw ears with scaling and positioning (no rotation)
-        # Ears are drawn after head_outline and before cheeks for proper layering
-        # Ears are now stored as lists of polylines to preserve subpaths from SVG
-        if "ear_left" in face_points and isinstance(face_points["ear_left"], list):
-            ear_polylines = face_points["ear_left"]
-            
-            # Debug logging
-            if debug_ears:
-                total_points = sum(len(poly) for poly in ear_polylines)
-                xs = [x for poly in ear_polylines for x, y in poly]
-                ys = [y for poly in ear_polylines for x, y in poly]
-                print(f"ear_left: {len(ear_polylines)} subpath(s), {total_points} points total, "
-                      f"bbox=(minx={min(xs):.6f}, maxx={max(xs):.6f}, miny={min(ys):.6f}, maxy={max(ys):.6f})")
-            
-            # Transform and draw each subpath
-            for polyline in ear_polylines:
-                if len(polyline) < 2:
-                    continue
-                    
-                # Transform this polyline
-                transformed = transform_polygon(
-                    polyline,
-                    ear_left_size_x,
-                    ear_left_size_y,
-                    ear_left_pos_x,
-                    ear_left_pos_y,
-                )
-                
-                # Convert to pixels
-                pixel_points = [to_pixel(pt) for pt in transformed]
-                
-                # Draw with optional debug coloring
-                if debug_ears:
-                    draw.line(pixel_points, fill=(255, 0, 0), width=max(stroke_width, 3))
-                else:
-                    draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-        
-        if "ear_right" in face_points and isinstance(face_points["ear_right"], list):
-            ear_polylines = face_points["ear_right"]
-            
-            # Debug logging
-            if debug_ears:
-                total_points = sum(len(poly) for poly in ear_polylines)
-                xs = [x for poly in ear_polylines for x, y in poly]
-                ys = [y for poly in ear_polylines for x, y in poly]
-                print(f"ear_right: {len(ear_polylines)} subpath(s), {total_points} points total, "
-                      f"bbox=(minx={min(xs):.6f}, maxx={max(xs):.6f}, miny={min(ys):.6f}, maxy={max(ys):.6f})")
-            
-            # Transform and draw each subpath
-            for polyline in ear_polylines:
-                if len(polyline) < 2:
-                    continue
-                    
-                # Transform this polyline
-                transformed = transform_polygon(
-                    polyline,
-                    ear_right_size_x,
-                    ear_right_size_y,
-                    ear_right_pos_x,
-                    ear_right_pos_y,
-                )
-                
-                # Convert to pixels
-                pixel_points = [to_pixel(pt) for pt in transformed]
-                
-                # Draw with optional debug coloring
-                if debug_ears:
-                    draw.line(pixel_points, fill=(0, 0, 255), width=max(stroke_width, 3))
-                else:
-                    draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw chin with scaling only (no positioning)
         if "chin" in face_points:
@@ -1280,14 +1132,6 @@ class ComfyUIFaceShaper:
             cheek_left_pos_y,
             cheek_right_pos_x,
             cheek_right_pos_y,
-            ear_left_pos_x,
-            ear_left_pos_y,
-            ear_left_size_x,
-            ear_left_size_y,
-            ear_right_pos_x,
-            ear_right_pos_y,
-            ear_right_size_x,
-            ear_right_size_y,
             eyebrow_left_size_x,
             eyebrow_left_size_y,
             eyebrow_left_rotation,
