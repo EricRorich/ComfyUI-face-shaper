@@ -9,13 +9,13 @@ Update ComfyUIFaceShaper to sync with the latest SVG: refreshed ears, integrated
 **Objective**: Replace ear coordinates with new SVG-derived, viewBox-normalized coordinates.
 
 **Implementation**:
-- Updated `ear_right` from path185: Starting at (0.219108, 0.115755) - 5 points
-- Updated `ear_left` from path184: Starting at (0.045475, 0.115755) - 5 points
+- Updated `ear_right` from path184 (subpath 2): Starting at (0.796875, 0.609375) - 5 points
+- Updated `ear_left` from path184 (subpath 1): Starting at (0.187500, 0.484375) - 5 points
 - All existing controls (pos_x/pos_y, size_x/size_y) remain fully functional
 - Transform pipeline intact: centroid → scale → position offsets → pixel conversion
 - Rendering via `draw.line` with existing stroke logic
 
-**Files Modified**: `face_shaper.py` (lines 169-185)
+**Files Modified**: `face_shaper.py` (lines 170-189)
 
 ### B) Removed Obsolete nose_tip Geometry ✅
 **Objective**: Remove separate nose_tip geometry and associated settings.
@@ -36,16 +36,17 @@ Update ComfyUIFaceShaper to sync with the latest SVG: refreshed ears, integrated
 
 **Implementation**:
 - Retained `nose_tip_pos_y` parameter (FLOAT, default 0.0, min -0.2, max 0.2, step 0.005)
+- Updated nose geometry to 13 points from SVG path46 (was 11 points)
 - Identified 3 tip points (middle-most, lowest-Y):
-  - Index 3: (0.455541, 0.655884) - left tip
-  - Index 5: (0.500000, 0.671066) - center tip (lowest point)
-  - Index 7: (0.544459, 0.655884) - right tip
+  - Index 5: (0.487500, 0.656250) - left tip
+  - Index 6: (0.500000, 0.659375) - center tip (lowest point)
+  - Index 7: (0.512500, 0.656250) - right tip
 - Applied `nose_tip_pos_y` offset selectively to these 3 points only
 - Timing: After nose scaling and nose position offsets, before pixel conversion
 - Single draw call for entire nose (no separate rendering)
 - Added inline documentation of tip point coordinates
 
-**Files Modified**: `face_shaper.py` (lines 815-837)
+**Files Modified**: `face_shaper.py` (lines 156-169, 836-878)
 
 ### D) Updated Settings List Handling ✅
 **Objective**: Adjust settings list for reduced parameter count.

@@ -10,25 +10,25 @@ def test_geometry_data():
     """Test that the geometry data is correct."""
     print("Testing geometry data...")
     
-    # Check that ear_left exists with updated coordinates (6 points from UPDATED SVG)
+    # Check that ear_left exists with updated coordinates (5 points from UPDATED SVG)
     assert "ear_left" in FEMALE_FACE, "ear_left not found in FEMALE_FACE"
-    assert len(FEMALE_FACE["ear_left"]) == 6, f"ear_left should have 6 points, got {len(FEMALE_FACE['ear_left'])}"
+    assert len(FEMALE_FACE["ear_left"]) == 5, f"ear_left should have 5 points, got {len(FEMALE_FACE['ear_left'])}"
     
-    # Verify ear_left has updated SVG coordinates (from path184)
+    # Verify ear_left has updated SVG coordinates (from path184, subpath 1)
     ear_left_first = FEMALE_FACE["ear_left"][0]
-    assert abs(ear_left_first[0] - 0.171875) < 0.001, f"ear_left first point x should be ~0.171875, got {ear_left_first[0]}"
+    assert abs(ear_left_first[0] - 0.187500) < 0.001, f"ear_left first point x should be ~0.187500, got {ear_left_first[0]}"
     
     # Verify ear_left bbox: maxx should be < 0.5 (left side of face)
     ear_left_xs = [x for x, y in FEMALE_FACE["ear_left"]]
     assert max(ear_left_xs) < 0.5, f"ear_left maxx should be < 0.5, got {max(ear_left_xs)}"
     
-    # Check that ear_right exists with updated coordinates (6 points from UPDATED SVG)
+    # Check that ear_right exists with updated coordinates (5 points from UPDATED SVG)
     assert "ear_right" in FEMALE_FACE, "ear_right not found in FEMALE_FACE"
-    assert len(FEMALE_FACE["ear_right"]) == 6, f"ear_right should have 6 points, got {len(FEMALE_FACE['ear_right'])}"
+    assert len(FEMALE_FACE["ear_right"]) == 5, f"ear_right should have 5 points, got {len(FEMALE_FACE['ear_right'])}"
     
-    # Verify ear_right has updated SVG coordinates (from path185)
+    # Verify ear_right has updated SVG coordinates (from path184, subpath 2)
     ear_right_first = FEMALE_FACE["ear_right"][0]
-    assert abs(ear_right_first[0] - 0.828125) < 0.001, f"ear_right first point x should be ~0.828125, got {ear_right_first[0]}"
+    assert abs(ear_right_first[0] - 0.796875) < 0.001, f"ear_right first point x should be ~0.796875, got {ear_right_first[0]}"
     
     # Verify ear_right bbox: minx should be > 0.5 (right side of face)
     ear_right_xs = [x for x, y in FEMALE_FACE["ear_right"]]
@@ -37,9 +37,9 @@ def test_geometry_data():
     # Check that nose_tip geometry is REMOVED (no longer a separate geometry)
     assert "nose_tip" not in FEMALE_FACE, "nose_tip should be removed from FEMALE_FACE (now integrated in nose)"
     
-    # Check that nose still exists with 11 points
+    # Check that nose still exists with 13 points (updated from SVG path46)
     assert "nose" in FEMALE_FACE, "nose not found in FEMALE_FACE"
-    assert len(FEMALE_FACE["nose"]) == 11, f"nose should have 11 points, got {len(FEMALE_FACE['nose'])}"
+    assert len(FEMALE_FACE["nose"]) == 13, f"nose should have 13 points, got {len(FEMALE_FACE['nose'])}"
     
     # Verify nose bbox is roughly central (minx ~0.35-0.45, maxx ~0.55-0.65)
     nose_xs = [x for x, y in FEMALE_FACE["nose"]]
