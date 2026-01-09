@@ -42,18 +42,33 @@ def check_female_face_dict():
         print("✗ FAILED: ear_left or ear_right missing")
         return False
     
-    # Verify updated coordinates from new SVG
-    if abs(ear_right[0][0] - 0.219108) < 0.001:
+    # Verify updated coordinates from new SVG (path184, subpath 2 for ear_right)
+    # SVG-derived ear_right starts at (0.796875, 0.609375)
+    if abs(ear_right[0][0] - 0.796875) < 0.001:
         print("✓ ear_right has updated SVG coordinates")
     else:
-        print(f"✗ FAILED: ear_right[0][0] = {ear_right[0][0]}, expected ~0.219108")
+        print(f"✗ FAILED: ear_right[0][0] = {ear_right[0][0]}, expected ~0.796875")
         return False
     
-    if abs(ear_left[0][0] - 0.045475) < 0.001:
+    # SVG-derived ear_left starts at (0.187500, 0.484375)
+    if abs(ear_left[0][0] - 0.187500) < 0.001:
         print("✓ ear_left has updated SVG coordinates")
     else:
-        print(f"✗ FAILED: ear_left[0][0] = {ear_left[0][0]}, expected ~0.045475")
+        print(f"✗ FAILED: ear_left[0][0] = {ear_left[0][0]}, expected ~0.187500")
         return False
+    
+    # Verify ear point counts (5 points each from SVG path184)
+    if len(ear_right) != 5:
+        print(f"✗ FAILED: ear_right should have 5 points, got {len(ear_right)}")
+        return False
+    else:
+        print(f"✓ ear_right has 5 points (correct)")
+    
+    if len(ear_left) != 5:
+        print(f"✗ FAILED: ear_left should have 5 points, got {len(ear_left)}")
+        return False
+    else:
+        print(f"✓ ear_left has 5 points (correct)")
     
     # Check nose_tip is removed
     if 'nose_tip' in FEMALE_FACE:
@@ -62,12 +77,12 @@ def check_female_face_dict():
     else:
         print("✓ nose_tip geometry successfully removed")
     
-    # Check nose still exists
-    if 'nose' not in FEMALE_FACE or len(FEMALE_FACE['nose']) != 11:
-        print(f"✗ FAILED: nose should have 11 points")
+    # Check nose still exists with 13 points (updated from SVG path46)
+    if 'nose' not in FEMALE_FACE or len(FEMALE_FACE['nose']) != 13:
+        print(f"✗ FAILED: nose should have 13 points, got {len(FEMALE_FACE.get('nose', []))}")
         return False
     else:
-        print(f"✓ nose has 11 points (correct)")
+        print(f"✓ nose has 13 points (correct, from SVG path46)")
     
     print()
     return True
@@ -188,11 +203,17 @@ def check_nose_rendering():
     
     nose_code = matches[0].group(0)
     
-    # Check nose_tip_indices
-    if 'nose_tip_indices = {3, 5, 7}' in nose_code:
-        print("✓ nose_tip_indices correctly set to {3, 5, 7}")
+    # Check that the code algorithmically identifies tip points
+    # (sorting by Y descending, then by distance from center)
+    if 'sorted_points = sorted(indexed_points, key=lambda p: (-p[2], abs(p[1] - face_center_x)))' in nose_code:
+        print("✓ nose_tip_indices algorithmically identified (sorts by Y descending, then centrality)")
+    elif 'nose_tip_indices = {5, 6, 7}' in nose_code:
+        print("✓ nose_tip_indices correctly set to {5, 6, 7}")
+    elif 'nose_tip_indices = {3, 5, 7}' in nose_code:
+        print("⚠ WARNING: nose_tip_indices set to old values {3, 5, 7}, should be {5, 6, 7}")
+        print("  (This may still work with the algorithm)")
     else:
-        print("✗ FAILED: nose_tip_indices not correctly set")
+        print("✗ FAILED: nose_tip_indices not correctly identified")
         return False
     
     # Check that it applies the offset

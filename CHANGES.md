@@ -6,9 +6,9 @@ This update synchronizes ComfyUIFaceShaper with the latest SVG, implementing ref
 ## Changes Implemented
 
 ### A) Updated Ear Geometry
-- **Replaced ear coordinates**: Updated `ear_left` and `ear_right` with new SVG-derived, viewBox-normalized coordinates from paths path184 and path185
-  - `ear_right`: 5 points starting at (0.219108, 0.115755)
-  - `ear_left`: 5 points starting at (0.045475, 0.115755)
+- **Replaced ear coordinates**: Updated `ear_left` and `ear_right` with new SVG-derived, viewBox-normalized coordinates from path184 (which contains both ears in 2 subpaths)
+  - `ear_left`: 5 points starting at (0.187500, 0.484375) - left ear, subpath 1
+  - `ear_right`: 5 points starting at (0.796875, 0.609375) - right ear, subpath 2
 - **Maintained controls**: Existing ear controls (pos_x/pos_y, size_x/size_y) remain functional
 - **Transform pipeline**: Ears are transformed via centroid → scale → position offsets → pixel conversion
 - **Rendering**: Drawn with `draw.line` using existing stroke logic
@@ -24,10 +24,11 @@ This update synchronizes ComfyUIFaceShaper with the latest SVG, implementing ref
 
 ### C) Integrated Nose Tip Control
 - **Kept nose_tip_pos_y**: Single control parameter (FLOAT, default 0.0, min -0.2, max 0.2, step 0.005)
-- **Identified tip points**: Indices 3, 5, 7 are the 3 middle-most, lowest-Y points of the nose polyline
-  - Index 3: (0.455541, 0.655884)
-  - Index 5: (0.500000, 0.671066) - center point
-  - Index 7: (0.544459, 0.655884)
+- **Updated nose geometry**: 13 points from SVG path46 (was 11 points)
+- **Identified tip points**: Indices 5, 6, 7 are the 3 middle-most, lowest-Y points of the nose polyline
+  - Index 5: (0.487500, 0.656250) - left tip
+  - Index 6: (0.500000, 0.659375) - center point (lowest)
+  - Index 7: (0.512500, 0.656250) - right tip
 - **Applied offset**: `nose_tip_pos_y` is applied ONLY to these 3 points after nose scaling and position transforms, before pixel conversion
 - **Single draw call**: Nose is still drawn exactly once with `draw.line()`
 
