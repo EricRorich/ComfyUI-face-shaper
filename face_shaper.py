@@ -240,6 +240,7 @@ def _normalize_svg_coordinates(polylines: List[List[Tuple[float, float]]],
 
 # relative coordinates for female face (0–1 range)
 # Extracted from Face_Mask_female.svg using viewBox (0, 0, 270.93331, 270.93331) normalization
+# Note: Coordinate precision varies (6-7 decimal places) to preserve exact SVG transform results
 FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
     # Outer head outline - extracted from path173 with g41 transform applied
     "outer_head": [
