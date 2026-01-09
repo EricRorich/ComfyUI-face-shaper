@@ -10,21 +10,29 @@ def test_geometry_data():
     """Test that the geometry data is correct."""
     print("Testing geometry data...")
     
-    # Check that ear_left exists with updated coordinates
+    # Check that ear_left exists with updated coordinates (6 points from UPDATED SVG)
     assert "ear_left" in FEMALE_FACE, "ear_left not found in FEMALE_FACE"
-    assert len(FEMALE_FACE["ear_left"]) == 5, f"ear_left should have 5 points, got {len(FEMALE_FACE['ear_left'])}"
+    assert len(FEMALE_FACE["ear_left"]) == 6, f"ear_left should have 6 points, got {len(FEMALE_FACE['ear_left'])}"
     
-    # Verify ear_left has updated SVG coordinates
+    # Verify ear_left has updated SVG coordinates (from path184)
     ear_left_first = FEMALE_FACE["ear_left"][0]
-    assert abs(ear_left_first[0] - 0.045475) < 0.001, f"ear_left first point x should be ~0.045475, got {ear_left_first[0]}"
+    assert abs(ear_left_first[0] - 0.171875) < 0.001, f"ear_left first point x should be ~0.171875, got {ear_left_first[0]}"
     
-    # Check that ear_right exists with updated coordinates
+    # Verify ear_left bbox: maxx should be < 0.5 (left side of face)
+    ear_left_xs = [x for x, y in FEMALE_FACE["ear_left"]]
+    assert max(ear_left_xs) < 0.5, f"ear_left maxx should be < 0.5, got {max(ear_left_xs)}"
+    
+    # Check that ear_right exists with updated coordinates (6 points from UPDATED SVG)
     assert "ear_right" in FEMALE_FACE, "ear_right not found in FEMALE_FACE"
-    assert len(FEMALE_FACE["ear_right"]) == 5, f"ear_right should have 5 points, got {len(FEMALE_FACE['ear_right'])}"
+    assert len(FEMALE_FACE["ear_right"]) == 6, f"ear_right should have 6 points, got {len(FEMALE_FACE['ear_right'])}"
     
-    # Verify ear_right has updated SVG coordinates
+    # Verify ear_right has updated SVG coordinates (from path185)
     ear_right_first = FEMALE_FACE["ear_right"][0]
-    assert abs(ear_right_first[0] - 0.219108) < 0.001, f"ear_right first point x should be ~0.219108, got {ear_right_first[0]}"
+    assert abs(ear_right_first[0] - 0.828125) < 0.001, f"ear_right first point x should be ~0.828125, got {ear_right_first[0]}"
+    
+    # Verify ear_right bbox: minx should be > 0.5 (right side of face)
+    ear_right_xs = [x for x, y in FEMALE_FACE["ear_right"]]
+    assert min(ear_right_xs) > 0.5, f"ear_right minx should be > 0.5, got {min(ear_right_xs)}"
     
     # Check that nose_tip geometry is REMOVED (no longer a separate geometry)
     assert "nose_tip" not in FEMALE_FACE, "nose_tip should be removed from FEMALE_FACE (now integrated in nose)"
@@ -32,6 +40,12 @@ def test_geometry_data():
     # Check that nose still exists with 11 points
     assert "nose" in FEMALE_FACE, "nose not found in FEMALE_FACE"
     assert len(FEMALE_FACE["nose"]) == 11, f"nose should have 11 points, got {len(FEMALE_FACE['nose'])}"
+    
+    # Verify nose bbox is roughly central (minx ~0.35-0.45, maxx ~0.55-0.65)
+    nose_xs = [x for x, y in FEMALE_FACE["nose"]]
+    nose_minx, nose_maxx = min(nose_xs), max(nose_xs)
+    assert 0.35 <= nose_minx <= 0.45, f"nose minx should be ~0.35-0.45, got {nose_minx}"
+    assert 0.55 <= nose_maxx <= 0.65, f"nose maxx should be ~0.55-0.65, got {nose_maxx}"
     
     # Verify coordinates are normalized (0-1 range)
     for key in ["ear_left", "ear_right", "nose"]:
@@ -48,6 +62,12 @@ def test_input_types():
     node = ComfyUIFaceShaper()
     input_types = node.INPUT_TYPES()
     required = input_types["required"]
+    
+    # Check debug_geometry parameter
+    assert "debug_geometry" in required, "debug_geometry not found in INPUT_TYPES"
+    param_def = required["debug_geometry"]
+    assert param_def[0] == "BOOLEAN", "debug_geometry should be BOOLEAN"
+    assert param_def[1]["default"] == False, "debug_geometry default should be False"
     
     # Check ear parameters
     ear_params = [
@@ -108,6 +128,9 @@ def test_draw_face_signature():
     sig = inspect.signature(node.draw_face)
     params = list(sig.parameters.keys())
     
+    # Check debug_geometry parameter is present
+    assert "debug_geometry" in params, "debug_geometry not found in draw_face signature"
+    
     # Check ear parameters are present
     ear_params = [
         "ear_left_pos_x", "ear_left_pos_y", "ear_left_size_x", "ear_left_size_y",
@@ -132,13 +155,14 @@ def test_basic_rendering():
     node = ComfyUIFaceShaper()
     
     # Call with default parameters (all zeros/ones as appropriate)
-    # Note: Removed nose_tip_size_x and nose_tip_size_y parameters
+    # Note: Removed nose_tip_size_x and nose_tip_size_y parameters, added debug_geometry
     try:
         result = node.draw_face(
             canvas_width=512,
             canvas_height=512,
             gender="female",
             transparent_background=False,
+            debug_geometry=False,
             eye_left_size_x=1.0, eye_left_size_y=1.0, eye_left_pos_x=0.0, eye_left_pos_y=0.0,
             eye_right_size_x=1.0, eye_right_size_y=1.0, eye_right_pos_x=0.0, eye_right_pos_y=0.0,
             iris_left_size=1.0, iris_left_pos_x=0.0, iris_left_pos_y=0.0,
