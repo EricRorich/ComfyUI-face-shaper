@@ -823,7 +823,10 @@ class ComfyUIFaceShaper:
                 nose_pos_y,
             )
             # Then apply nose_tip_pos_y to the 3 middle-most, lowest-Y points (indices 3, 5, 7)
-            # These are the tip points that need independent Y adjustment
+            # These are the tip points that need independent Y adjustment:
+            #   Index 3: (0.455541, 0.655884) - left tip
+            #   Index 5: (0.500000, 0.671066) - center tip (lowest point)
+            #   Index 7: (0.544459, 0.655884) - right tip
             nose_tip_indices = {3, 5, 7}
             nose_with_tip = []
             for idx, (x, y) in enumerate(nose):

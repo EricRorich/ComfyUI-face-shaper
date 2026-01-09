@@ -231,7 +231,7 @@ def check_settings_list():
     if match:
         length = int(match.group(1))
         if length == 60:
-            print(f"✓ SETTINGS_LIST_LENGTH = 60 (correct)")
+            print(f"✓ SETTINGS_LIST_LENGTH = 60 (allows for 57 used + 3 reserved)")
         else:
             print(f"✗ FAILED: SETTINGS_LIST_LENGTH = {length}, expected 60")
             return False
@@ -250,7 +250,8 @@ def check_settings_list():
         if param_count == 57:
             print(f"✓ settings_export has 57 parameters (correct)")
         else:
-            print(f"⚠ settings_export has {param_count} parameters (expected 57)")
+            print(f"✗ FAILED: settings_export has {param_count} parameters (expected 57)")
+            return False
         
         # Check nose_tip_pos_y is present but not size parameters
         if 'nose_tip_pos_y' in export_content:
