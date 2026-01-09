@@ -33,13 +33,13 @@ def test_default_render():
         debug_geometry=False,
         eye_left_size_x=1.0, eye_left_size_y=1.0, eye_left_pos_x=0.0, eye_left_pos_y=0.0,
         eye_right_size_x=1.0, eye_right_size_y=1.0, eye_right_pos_x=0.0, eye_right_pos_y=0.0,
+        eye_left_rotation=0.0, eye_right_rotation=0.0,
         iris_left_size=1.0, iris_left_pos_x=0.0, iris_left_pos_y=0.0,
         iris_right_size=1.0, iris_right_pos_x=0.0, iris_right_pos_y=0.0,
         outer_head_size_x=1.0, outer_head_size_y=1.0,
         jaw_size_x=1.0, forehead_size_x=1.0,
         lips_pos_y=0.0, lips_size_x=1.0,
         lip_upper_size_y=1.0, lip_lower_size_y=1.0,
-        chin_size_x=1.0, chin_size_y=1.0,
         cheek_left_pos_x=0.0, cheek_left_pos_y=0.0,
         cheek_right_pos_x=0.0, cheek_right_pos_y=0.0,
         eyebrow_left_size_x=1.0, eyebrow_left_size_y=1.0, eyebrow_left_rotation=0.0,
@@ -72,13 +72,13 @@ def test_nose_tip_adjustment():
         debug_geometry=False,
         eye_left_size_x=1.0, eye_left_size_y=1.0, eye_left_pos_x=0.0, eye_left_pos_y=0.0,
         eye_right_size_x=1.0, eye_right_size_y=1.0, eye_right_pos_x=0.0, eye_right_pos_y=0.0,
+        eye_left_rotation=0.0, eye_right_rotation=0.0,
         iris_left_size=1.0, iris_left_pos_x=0.0, iris_left_pos_y=0.0,
         iris_right_size=1.0, iris_right_pos_x=0.0, iris_right_pos_y=0.0,
         outer_head_size_x=1.0, outer_head_size_y=1.0,
         jaw_size_x=1.0, forehead_size_x=1.0,
         lips_pos_y=0.0, lips_size_x=1.0,
         lip_upper_size_y=1.0, lip_lower_size_y=1.0,
-        chin_size_x=1.0, chin_size_y=1.0,
         cheek_left_pos_x=0.0, cheek_left_pos_y=0.0,
         cheek_right_pos_x=0.0, cheek_right_pos_y=0.0,
         eyebrow_left_size_x=1.0, eyebrow_left_size_y=1.0, eyebrow_left_rotation=0.0,
@@ -110,13 +110,13 @@ def test_debug_geometry():
         debug_geometry=True,  # Enable debug markers
         eye_left_size_x=1.0, eye_left_size_y=1.0, eye_left_pos_x=0.0, eye_left_pos_y=0.0,
         eye_right_size_x=1.0, eye_right_size_y=1.0, eye_right_pos_x=0.0, eye_right_pos_y=0.0,
+        eye_left_rotation=0.0, eye_right_rotation=0.0,
         iris_left_size=1.0, iris_left_pos_x=0.0, iris_left_pos_y=0.0,
         iris_right_size=1.0, iris_right_pos_x=0.0, iris_right_pos_y=0.0,
         outer_head_size_x=1.0, outer_head_size_y=1.0,
         jaw_size_x=1.0, forehead_size_x=1.0,
         lips_pos_y=0.0, lips_size_x=1.0,
         lip_upper_size_y=1.0, lip_lower_size_y=1.0,
-        chin_size_x=1.0, chin_size_y=1.0,
         cheek_left_pos_x=0.0, cheek_left_pos_y=0.0,
         cheek_right_pos_x=0.0, cheek_right_pos_y=0.0,
         eyebrow_left_size_x=1.0, eyebrow_left_size_y=1.0, eyebrow_left_rotation=0.0,
@@ -135,15 +135,57 @@ def test_debug_geometry():
     save_tensor_as_image(tensor, '/tmp/face_debug.png')
     print("✓ Debug geometry test passed")
 
+def test_eye_rotation():
+    """Test rendering with eye rotation."""
+    print("\nTesting eye rotation...")
+    node = ComfyUIFaceShaper()
+    
+    # Test independent eye rotations
+    result = node.draw_face(
+        canvas_width=1024,
+        canvas_height=1024,
+        gender="female",
+        transparent_background=False,
+        debug_geometry=False,
+        eye_left_size_x=1.0, eye_left_size_y=1.0, eye_left_pos_x=0.0, eye_left_pos_y=0.0,
+        eye_right_size_x=1.0, eye_right_size_y=1.0, eye_right_pos_x=0.0, eye_right_pos_y=0.0,
+        eye_left_rotation=15.0,  # Rotate left eye 15 degrees
+        eye_right_rotation=-15.0,  # Rotate right eye -15 degrees
+        iris_left_size=1.0, iris_left_pos_x=0.0, iris_left_pos_y=0.0,
+        iris_right_size=1.0, iris_right_pos_x=0.0, iris_right_pos_y=0.0,
+        outer_head_size_x=1.0, outer_head_size_y=1.0,
+        jaw_size_x=1.0, forehead_size_x=1.0,
+        lips_pos_y=0.0, lips_size_x=1.0,
+        lip_upper_size_y=1.0, lip_lower_size_y=1.0,
+        cheek_left_pos_x=0.0, cheek_left_pos_y=0.0,
+        cheek_right_pos_x=0.0, cheek_right_pos_y=0.0,
+        eyebrow_left_size_x=1.0, eyebrow_left_size_y=1.0, eyebrow_left_rotation=0.0,
+        eyebrow_left_pos_x=0.0, eyebrow_left_pos_y=0.0,
+        eyebrow_right_size_x=1.0, eyebrow_right_size_y=1.0, eyebrow_right_rotation=0.0,
+        eyebrow_right_pos_x=0.0, eyebrow_right_pos_y=0.0,
+        nose_pos_y=0.0, nose_size_x=1.0, nose_size_y=1.0,
+        nose_tip_pos_y=0.0,
+        camera_distance=1.0, camera_pos_x=0.0, camera_pos_y=0.0,
+        fov_mm=80.0,
+        line_thickness=2.0,
+        settings_list=None
+    )
+    
+    tensor, settings_list = result
+    save_tensor_as_image(tensor, '/tmp/face_eye_rotation.png')
+    print("✓ Eye rotation test passed")
+
 if __name__ == "__main__":
     print("Running render tests...\n")
     
     test_default_render()
     test_nose_tip_adjustment()
     test_debug_geometry()
+    test_eye_rotation()
     
     print("\n✓ All render tests completed!")
     print("\nGenerated images:")
     print("  /tmp/face_default.png - Default render with updated geometry")
     print("  /tmp/face_nose_tip_down.png - Nose tip adjusted down (+0.1)")
     print("  /tmp/face_debug.png - Debug mode showing nose tip points")
+    print("  /tmp/face_eye_rotation.png - Eye rotation test (left +15°, right -15°)")

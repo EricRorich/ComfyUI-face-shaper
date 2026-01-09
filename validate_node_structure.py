@@ -160,10 +160,10 @@ def validate_parameter_count():
             
             print(f"✓ Total parameters in draw_face: {len(params)}")
             
-            # Expected parameter count after removing 9 ear parameters:
-            # Original was ~62 parameters, minus 9 ear parameters = ~52 parameters
-            if len(params) < 50 or len(params) > 54:
-                print(f"  ⚠ WARNING: Unexpected parameter count (expected ~52)")
+            # Expected parameter count after removing chin (2 params) and adding eye rotation (2 params):
+            # Original was ~48-52 parameters; -2 chin +2 rotation = ~48-52 parameters
+            if len(params) < 46 or len(params) > 50:
+                print(f"  ⚠ WARNING: Unexpected parameter count (expected ~48)")
             else:
                 print(f"  ✓ Parameter count looks reasonable")
             
@@ -174,10 +174,46 @@ def validate_parameter_count():
     return False
 
 
-def validate_no_ear_references():
-    """Final check: no ear-related code should remain."""
+def validate_no_chin_references():
+    """Final check: no chin-related code should remain."""
     print("=" * 70)
-    print("6. Final check: No ear references")
+    print("6. Final check: No chin references")
+    print("=" * 70)
+    
+    with open('face_shaper.py', 'r') as f:
+        content = f.read()
+    
+    # Remove comments to avoid false positives
+    content_no_comments = re.sub(r'#.*', '', content)
+    content_no_comments = re.sub(r'""".*?"""', '', content_no_comments, flags=re.DOTALL)
+    content_no_comments = re.sub(r"'''.*?'''", '', content_no_comments, flags=re.DOTALL)
+    
+    # Check for chin references
+    chin_patterns = [
+        '"chin"',
+        "'chin'",
+        'chin_pos',
+        'chin_size',
+    ]
+    
+    found = []
+    for pattern in chin_patterns:
+        if pattern in content_no_comments:
+            found.append(pattern)
+    
+    if found:
+        print(f"✗ FAILED: Found chin references: {found}")
+        return False
+    
+    print("✓ No chin references found in code")
+    print()
+    return True
+
+
+def validate_no_ear_references():
+    """Check: no ear-related code should remain."""
+    print("=" * 70)
+    print("7. Check: No ear references")
     print("=" * 70)
     
     with open('face_shaper.py', 'r') as f:
@@ -227,6 +263,7 @@ def main():
         ("Class structure", validate_class_structure),
         ("Node mappings", validate_node_mappings),
         ("Parameter count", validate_parameter_count),
+        ("No chin references", validate_no_chin_references),
         ("No ear references", validate_no_ear_references),
     ]
     
@@ -260,6 +297,7 @@ def main():
         print("\nThe node is ready to use!")
         print("• No syntax errors")
         print("• All required methods and attributes present")
+        print("• No chin-related code remains")
         print("• No ear-related code remains")
         print("• Node name and category unchanged")
         return 0
