@@ -396,11 +396,12 @@ FEMALE_FACE_IRISES = {
 }
 
 # Number of parameters in settings_list (for import/export functionality)
-# Current list: 49 parameters + padding for future expansion
+# Current list: 50 parameters total
 # Breakdown:
-# - 47 feature control parameters (eyes, eyebrows, nose, lips, etc.)
-# - 1 cheeks_enabled toggle (boolean)
-# - 2 canvas dimensions (width, height) - exported but not imported
+# - 0-46: 47 feature control parameters (eyes, eyebrows, nose, lips, cheeks, camera, etc.)
+# - 47-48: 2 canvas dimensions (width, height) - exported but not imported
+# - 49: 1 cheeks_enabled toggle (boolean)
+# Set to 60 to allow for future expansion
 SETTINGS_LIST_LENGTH = 60
 
 # Cheek connection points (hardcoded from SVG coordinates)
@@ -749,14 +750,15 @@ class ComfyUIFaceShaper:
             camera_pos_y = settings_list[44]
             fov_mm = settings_list[45]
             line_thickness = settings_list[46]
-            # Index 48: cheeks_enabled (new parameter, fallback to True if missing)
-            if len(settings_list) > 48:
-                cheeks_enabled = settings_list[48]
+            # Index 49: cheeks_enabled (new parameter, fallback to True if missing)
+            # Check if settings_list has at least 50 elements (index 49 exists)
+            if len(settings_list) > 49:
+                cheeks_enabled = settings_list[49]
             else:
                 cheeks_enabled = True
             # Note: canvas_width/canvas_height (indices 47-48) are exported but not imported
             # as they are always provided as direct parameters to the method
-            # Total: 49 parameters (47 feature controls + 1 cheeks_enabled + 2 canvas dimensions - canvas not imported)
+            # Total exported: 50 parameters (indices 0-49)
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
