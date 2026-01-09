@@ -748,10 +748,6 @@ class ComfyUIFaceShaper:
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
 
-        # Debug geometry output
-        if False:  # debug_geometry removed
-            pass
-
         # Create a blank canvas - RGBA for transparent background, RGB for white background.
         if transparent_background:
             img = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 0))
