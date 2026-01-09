@@ -160,9 +160,9 @@ def validate_parameter_count():
             print(f"✓ Total parameters in draw_face: {len(params)}")
             
             # Expected parameter count after removing 9 ear parameters:
-            # Original was ~62 parameters, minus 9 ear parameters = 53-54 parameters
-            if len(params) < 50 or len(params) > 60:
-                print(f"  ⚠ WARNING: Unexpected parameter count (expected ~53-54)")
+            # Original was ~62 parameters, minus 9 ear parameters = ~52 parameters
+            if len(params) < 50 or len(params) > 54:
+                print(f"  ⚠ WARNING: Unexpected parameter count (expected ~52)")
             else:
                 print(f"  ✓ Parameter count looks reasonable")
             
