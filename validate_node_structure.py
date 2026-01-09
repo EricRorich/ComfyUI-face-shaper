@@ -160,8 +160,9 @@ def validate_parameter_count():
             
             print(f"✓ Total parameters in draw_face: {len(params)}")
             
-            # Expected parameter count after removing chin (2 params) and adding eye rotation (2 params):
-            # Original was ~48-52 parameters; -2 chin +2 rotation = ~48-52 parameters
+            # Parameter count: removed 2 chin parameters (chin_size_x, chin_size_y) 
+            # and added 2 eye rotation parameters (eye_left_rotation, eye_right_rotation)
+            # Net change: 0 parameters, so expected count remains ~48
             if len(params) < 46 or len(params) > 50:
                 print(f"  ⚠ WARNING: Unexpected parameter count (expected ~48)")
             else:

@@ -746,6 +746,7 @@ class ComfyUIFaceShaper:
             # Note: canvas_width/canvas_height (indices 47-48) are exported but not imported
             # as they are always provided as direct parameters to the method
             # Total: 48 parameters (46 feature controls + 2 canvas dimensions)
+            # Breaking change: old settings_lists with chin parameters are not compatible
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
