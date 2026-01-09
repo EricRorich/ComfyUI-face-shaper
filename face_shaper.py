@@ -4,21 +4,22 @@ Refined implementation of the ComfyUI Face Shaper custom node.
 This module implements a custom node that draws a stylized facial mask based on
 SVG‑derived coordinates extracted from Face_Mask_female.svg (1024×1024). Users 
 can adjust the positions and sizes of distinct facial features including:
-outer head outline, eyes, irises, eyebrows, nose (single merged object), 
-nose tip, ears (left and right), lips (upper and lower with direction-specific 
-scaling), chin, and cheeks. All coordinates are normalized to [0-1] range. 
-Users can select a gender preset (currently both genders use the same 
-coordinates), change the canvas size and camera distance, and control the line 
-thickness. The output is black lines on either a white or transparent background 
-as a tensor compatible with ComfyUI workflows.
+outer head outline, eyes, irises, eyebrows, nose (single merged object with 
+integrated tip control), ears (left and right), lips (upper and lower with 
+direction-specific scaling), chin, and cheeks. All coordinates are normalized 
+to [0-1] range. Users can select a gender preset (currently both genders use 
+the same coordinates), change the canvas size and camera distance, and control 
+the line thickness. The output is black lines on either a white or transparent 
+background as a tensor compatible with ComfyUI workflows.
 
 Key improvements in this version:
-- Updated to use merged nose (single object) from latest SVG
-- Added ear_left and ear_right geometry with independent position/size controls
-- Added nose_tip geometry with vertical position and size controls
-- Lips now split into upper and lower with independent y-scaling
+- Updated ear geometry with refreshed SVG-derived coordinates
+- Nose tip now integrated within nose polyline (no separate geometry)
+- nose_tip_pos_y controls only the 3 middle-most, lowest-Y points of nose
+- Removed obsolete nose_tip size controls (nose_tip_size_x, nose_tip_size_y)
+- Lips split into upper and lower with independent y-scaling
 - Direction-specific lip scaling keeps mouth midline anchored
-- Nose simplified to 3 parameters: pos_y, size_x, size_y
+- Nose simplified to 3 parameters: pos_y, size_x, size_y + integrated tip control
 - All position parameters default to 0.0 (zero offsets by default)
 - Per-feature scaling controls prevent distortion across unrelated features
 - Camera translation controls (camera_pos_x, camera_pos_y) for panning the view
@@ -167,27 +168,20 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.544459, 0.542654),
     ],
     # Ears (extracted from Face_Mask_female.svg layer11: path185 and path184)
+    # Updated coordinates from latest SVG, viewBox-normalized (1024x1024)
     "ear_right": [
-        (0.828125, 0.437500),
-        (0.859375, 0.375000),
-        (0.890625, 0.375000),
-        (0.828125, 0.609375),
-        (0.796875, 0.625000),
+        (0.219108, 0.115755),
+        (0.227376, 0.099219),
+        (0.235645, 0.099219),
+        (0.219108, 0.161230),
+        (0.210840, 0.165365),
     ],
     "ear_left": [
-        (0.171875, 0.437500),
-        (0.140625, 0.375000),
-        (0.109375, 0.375000),
-        (0.171875, 0.609375),
-        (0.203125, 0.625000),
-    ],
-    # Nose tip (extracted from Face_Mask_female.svg layer6: path186)
-    "nose_tip": [
-        (0.473038, 0.587625),
-        (0.459375, 0.634375),
-        (0.500000, 0.650000),
-        (0.540625, 0.634375),
-        (0.526962, 0.587625),
+        (0.045475, 0.115755),
+        (0.037207, 0.099219),
+        (0.028939, 0.099219),
+        (0.045475, 0.161230),
+        (0.053744, 0.165365),
     ],
 }
 
@@ -204,7 +198,7 @@ FEMALE_FACE_IRISES = {
 }
 
 # Number of parameters in settings_list (for import/export functionality)
-# Set to 60 to allow for future expansion (currently 59 parameters are used)
+# Set to 60 to allow for future expansion (currently 57 parameters are used)
 SETTINGS_LIST_LENGTH = 60
 
 # Cheek connection points (hardcoded from SVG coordinates)
@@ -448,18 +442,10 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
-                # Nose tip (near nose)
+                # Nose tip (integrated within nose polyline)
                 "nose_tip_pos_y": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.2, "max": 0.2, "step": 0.005},
-                ),
-                "nose_tip_size_x": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
-                ),
-                "nose_tip_size_y": (
-                    "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
                 ),
                 # Global
                 "camera_distance": (
@@ -544,8 +530,6 @@ class ComfyUIFaceShaper:
         nose_size_x: float,
         nose_size_y: float,
         nose_tip_pos_y: float,
-        nose_tip_size_x: float,
-        nose_tip_size_y: float,
         camera_distance: float,
         camera_pos_x: float,
         camera_pos_y: float,
@@ -606,16 +590,14 @@ class ComfyUIFaceShaper:
             nose_size_x = settings_list[47]
             nose_size_y = settings_list[48]
             nose_tip_pos_y = settings_list[49]
-            nose_tip_size_x = settings_list[50]
-            nose_tip_size_y = settings_list[51]
-            camera_distance = settings_list[52]
-            camera_pos_x = settings_list[53]
-            camera_pos_y = settings_list[54]
-            fov_mm = settings_list[55]
-            line_thickness = settings_list[56]
-            # Note: canvas_width/canvas_height (indices 57-58) are exported but not imported
+            camera_distance = settings_list[50]
+            camera_pos_x = settings_list[51]
+            camera_pos_y = settings_list[52]
+            fov_mm = settings_list[53]
+            line_thickness = settings_list[54]
+            # Note: canvas_width/canvas_height (indices 55-56) are exported but not imported
             # as they are always provided as direct parameters to the method
-            # Total: 59 parameters (57 feature controls + 2 canvas dimensions)
+            # Total: 57 parameters (55 feature controls + 2 canvas dimensions)
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
@@ -830,8 +812,9 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in eyebrow_right]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw nose (single merged object) with scaling and y-positioning
+        # Draw nose (single merged object) with scaling, y-positioning, and integrated tip control
         if "nose" in face_points:
+            # First apply scaling and main y-positioning
             nose = transform_polygon(
                 face_points["nose"],
                 nose_size_x,
@@ -839,22 +822,19 @@ class ComfyUIFaceShaper:
                 0.0,
                 nose_pos_y,
             )
-            pixel_points = [to_pixel(pt) for pt in nose]
+            # Then apply nose_tip_pos_y to the 3 middle-most, lowest-Y points (indices 3, 5, 7)
+            # These are the tip points that need independent Y adjustment
+            nose_tip_indices = {3, 5, 7}
+            nose_with_tip = []
+            for idx, (x, y) in enumerate(nose):
+                if idx in nose_tip_indices:
+                    # Apply tip position offset only to these points
+                    nose_with_tip.append((x, y + nose_tip_pos_y))
+                else:
+                    nose_with_tip.append((x, y))
+            
+            pixel_points = [to_pixel(pt) for pt in nose_with_tip]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-        
-        # Draw nose tip with scaling and y-positioning (no x-positioning, no rotation)
-        # Nose tip is drawn after nose base and before lips for proper layering
-        if "nose_tip" in face_points:
-            nose_tip = transform_polygon(
-                face_points["nose_tip"],
-                nose_tip_size_x,
-                nose_tip_size_y,
-                0.0,
-                nose_tip_pos_y,
-            )
-            pixel_points = [to_pixel(pt) for pt in nose_tip]
-            if len(pixel_points) >= 2:
-                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
         # Draw lips (upper and lower) with direction-specific scaling
         # Mouth midline is approximately at y = 0.757394
@@ -1029,8 +1009,6 @@ class ComfyUIFaceShaper:
             nose_size_x,
             nose_size_y,
             nose_tip_pos_y,
-            nose_tip_size_x,
-            nose_tip_size_y,
             camera_distance,
             camera_pos_x,
             camera_pos_y,
