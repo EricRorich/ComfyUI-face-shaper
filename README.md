@@ -1,4 +1,4 @@
-# ComfyUI-face-shaper
+# ComfyUI-face-shaper WIP
 
 A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline (with separate jaw and forehead controls), eyes (with independent rotation), irises, eyebrows, nose (single merged object), lips (upper and lower with direction-specific scaling), and cheeks. AT THE MOMENT IT WORKS ONLY WITH QWEN-IMAGE-EDIT-2511.
 
