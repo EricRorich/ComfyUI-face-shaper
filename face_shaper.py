@@ -479,11 +479,11 @@ class ComfyUIFaceShaper:
                 ),
                 "eye_left_size_x": (
                     "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 3.0, "step": 0.01},
                 ),
                 "eye_left_size_y": (
                     "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 3.0, "step": 0.01},
                 ),
                 "eye_left_pos_x": (
                     "FLOAT",
@@ -499,11 +499,11 @@ class ComfyUIFaceShaper:
                 ),
                 "eye_right_size_x": (
                     "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 3.0, "step": 0.01},
                 ),
                 "eye_right_size_y": (
                     "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 3.0, "step": 0.01},
                 ),
                 "eye_right_pos_x": (
                     "FLOAT",
@@ -519,7 +519,7 @@ class ComfyUIFaceShaper:
                 ),
                 "iris_left_size": (
                     "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 3.0, "step": 0.01},
                 ),
                 "iris_left_pos_x": (
                     "FLOAT",
@@ -531,7 +531,7 @@ class ComfyUIFaceShaper:
                 ),
                 "iris_right_size": (
                     "FLOAT",
-                    {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.01},
+                    {"default": 1.0, "min": 0.5, "max": 3.0, "step": 0.01},
                 ),
                 "iris_right_pos_x": (
                     "FLOAT",
@@ -1180,9 +1180,9 @@ class ComfyUIFaceShaper:
 # identifiers are valid Python identifiers, which improves compatibility with
 # ComfyUI’s loading mechanism.
 NODE_CLASS_MAPPINGS = {
-    "RORICH-AI": ComfyUIFaceShaper,
+    "Rorich": ComfyUIFaceShaper,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "RORICH-AI": "Face Shaper",
+    "Rorich": "Face Shaper",
 }

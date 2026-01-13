@@ -122,8 +122,8 @@ def validate_node_mappings():
         print("✗ FAILED: NODE_CLASS_MAPPINGS not found")
         return False
     
-    if '"RORICH-AI": ComfyUIFaceShaper' not in content:
-        print("✗ FAILED: NODE_CLASS_MAPPINGS should map 'RORICH-AI' to ComfyUIFaceShaper")
+    if '"Rorich": ComfyUIFaceShaper' not in content:
+        print("✗ FAILED: NODE_CLASS_MAPPINGS should map 'Rorich' to ComfyUIFaceShaper")
         return False
     
     print("✓ NODE_CLASS_MAPPINGS configured correctly")
@@ -133,7 +133,7 @@ def validate_node_mappings():
         print("✗ FAILED: NODE_DISPLAY_NAME_MAPPINGS not found")
         return False
     
-    if '"RORICH-AI": "Face Shaper"' not in content:
+    if '"Rorich": "Face Shaper"' not in content:
         print("✗ FAILED: NODE_DISPLAY_NAME_MAPPINGS should map to 'Face Shaper'")
         return False
     
