@@ -7,6 +7,9 @@
 
 import { app } from "../../scripts/app.js";
 
+// Constants
+const RESET_BUTTON_HEIGHT = 30;
+
 app.registerExtension({
     name: "RORICH.FaceShaper.Reset",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
@@ -134,7 +137,7 @@ app.registerExtension({
                 // Configure the reset button widget to ensure it's visible
                 if (resetButton) {
                     // Make sure the button appears at the end by setting compute order
-                    resetButton.computeSize = () => [this.size[0], 30];
+                    resetButton.computeSize = () => [this.size[0], RESET_BUTTON_HEIGHT];
                     resetButton.serialize = false; // Don't serialize button state
                 }
                 
