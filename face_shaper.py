@@ -784,6 +784,14 @@ class ComfyUIFaceShaper:
             tn = t / (200.0 - 80.0)  # [0, 1]
         k1 = tn * 0.18
 
+        # Use min(canvas_width, canvas_height) as base to ensure uniform scene scale.
+        # This prevents face stretching when canvas is non-square - the face stays
+        # proportional and centered, with extra canvas space on the larger dimension.
+        base = min(canvas_width, canvas_height)
+        scene_scale = base * camera_distance
+        center_x = canvas_width / 2.0
+        center_y = canvas_height / 2.0
+
         def apply_distortion(x: float, y: float) -> Tuple[float, float]:
             """Apply radial distortion to pixel coordinates."""
             if k1 == 0:
@@ -801,8 +809,10 @@ class ComfyUIFaceShaper:
         def to_pixel(point: Tuple[float, float]) -> Tuple[float, float]:
             """Convert relative coordinates in range [0,1] to pixel positions with distortion."""
             rx, ry = point
-            x = (rx - 0.5 + camera_pos_x) * canvas_width * camera_distance + canvas_width / 2.0
-            y = (ry - 0.5 + camera_pos_y) * canvas_height * camera_distance + canvas_height / 2.0
+            dx = rx - 0.5 + camera_pos_x
+            dy = ry - 0.5 + camera_pos_y
+            x = center_x + dx * scene_scale
+            y = center_y + dy * scene_scale
             return apply_distortion(x, y)
 
         # Helper to scale and translate polygons.
@@ -1096,10 +1106,8 @@ class ComfyUIFaceShaper:
             cx_rel = base_center[0] + (iris_pos_x * 0.5)
             cy_rel = base_center[1] + (iris_pos_y * 0.5)
             cx, cy = to_pixel((cx_rel, cy_rel))
-            # Use the smaller canvas dimension so the iris remains round across aspect ratios.
-            radius_px = (
-                base_radius * iris_size * min(canvas_width, canvas_height) * camera_distance
-            )
+            # Use the uniform base (min canvas dimension) for consistent scaling with to_pixel.
+            radius_px = base_radius * iris_size * base * camera_distance
             bbox = [
                 cx - radius_px,
                 cy - radius_px,
