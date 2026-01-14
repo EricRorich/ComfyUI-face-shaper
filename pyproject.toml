@@ -1,5 +1,5 @@
 [project]
-name = "ComfyUI-face-shaper"
+name = "face-shaper"
 description = "Shape your unique AI face. A face canvas node for ComfyUI that renders customizable facial structure to 2D images for AI conditioning."
 version = "1.0.5"
 license = { file = "LICENSE.txt" }
