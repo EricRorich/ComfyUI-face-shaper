@@ -13,7 +13,7 @@ NODE_CLASS_MAPPINGS = {
     "RORICH-AI": ComfyUIFaceShaper,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "RORICH-AI": "ComfyUI-face-shaper",
+    "RORICH-AI": "Face-Shaper",
 }
 
 # Export web directory for client-side extensions
