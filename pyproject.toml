@@ -1,7 +1,7 @@
 [project]
 name = "face-shaper"
 description = "Shape your unique AI face. A face canvas node for ComfyUI that renders customizable facial structure to 2D images for AI conditioning."
-version = "1.0.6"
+version = "1.0.7"
 license = { file = "LICENSE.txt" }
 dependencies  = []
 
@@ -11,5 +11,5 @@ Repository = "https://github.com/EricRorich/ComfyUI-face-shaper"
 [tool.comfy]
 PublisherId = "rorich"
 DisplayName = "Face-Shaper"
-Icon = "https://github.com/EricRorich/ComfyUI-face-shaper/blob/main/Images/face-shaper_icon.png"
+Icon = "https://rorich-ai.com/wp-content/uploads/2026/01/face-shaper_icon.png"
 Banner = "https://github.com/EricRorich/ComfyUI-face-shaper/blob/main/Images/face-shaper_banner.png"
