@@ -7,11 +7,17 @@
 
 import { app } from "../../scripts/app.js";
 
+// Constants
+const RESET_BUTTON_HEIGHT = 30;
+
 app.registerExtension({
     name: "RORICH.FaceShaper.Reset",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        // Only register for the Face Shaper node (display name: "Face Shaper")
-        if (nodeData.display_name === "Face Shaper" || nodeData.name === "RORICH-AI") {
+        // Only register for the Face Shaper node (check all possible name variants)
+        if (nodeData.display_name === "Face Shaper" || 
+            nodeData.display_name === "Face-Shaper" || 
+            nodeData.name === "RORICH-AI" || 
+            nodeData.name === "Rorich") {
             // Store the original onNodeCreated callback
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             
@@ -19,8 +25,9 @@ app.registerExtension({
                 // Call the original onNodeCreated if it exists
                 const result = onNodeCreated?.apply(this, arguments);
                 
-                // Add a reset button to the node
-                this.addWidget("button", "Reset to Defaults", null, () => {
+                // Add a reset button to the node at the end
+                // Using "button" type which ComfyUI supports for clickable buttons
+                const resetButton = this.addWidget("button", "Reset to Defaults", null, () => {
                     // Define the default values according to INPUT_TYPES
                     // These must match the backend INPUT_TYPES defaults exactly
                     const defaults = {
@@ -126,6 +133,13 @@ app.registerExtension({
                         app.queuePrompt(0);
                     }
                 });
+                
+                // Configure the reset button widget to ensure it's visible
+                if (resetButton) {
+                    // Make sure the button appears at the end by setting compute order
+                    resetButton.computeSize = () => [this.size[0], RESET_BUTTON_HEIGHT];
+                    resetButton.serialize = false; // Don't serialize button state
+                }
                 
                 return result;
             };

@@ -123,6 +123,20 @@ This output can be used as:
    - Use `forehead_size_x` to adjust the forehead width independently
    - Adjust `lips_pos_y` to move both lips up or down together
 
+## Reset to Defaults
+
+The node includes a **"Reset to Defaults"** button at the end of the controls that allows you to:
+- Reset all parameters to their default values with a single click
+- Clear any loaded `settings_list` configuration
+- Quickly return to the baseline state when experimenting with different settings
+
+This is particularly useful when:
+- You want to start fresh after making many adjustments
+- You've loaded a `settings_list` preset and want to return to the original defaults
+- You're comparing different configurations and need a consistent starting point
+
+The reset button appears at the bottom of the node's widget list in the ComfyUI interface.
+
 ## Coordinate System
 
 All position parameters use a relative coordinate system:
