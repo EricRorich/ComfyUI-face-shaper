@@ -11,5 +11,5 @@ Repository = "https://github.com/EricRorich/ComfyUI-face-shaper"
 [tool.comfy]
 PublisherId = "rorich"
 DisplayName = "Face-Shaper"
-Icon = "Images/face-shaper_icon.png"
+Icon = "https://github.com/EricRorich/ComfyUI-face-shaper/blob/main/Images/face-shaper_icon.png"
 Banner = "https://raw.githubusercontent.com/username/super-resolution-node/main/banner.png"
