@@ -2,7 +2,9 @@
 """Test uniform scene scaling to verify face proportions are maintained across different canvas sizes."""
 
 import sys
-sys.path.insert(0, '/home/runner/work/ComfyUI-face-shaper/ComfyUI-face-shaper')
+import os
+# Add the current directory to the path so we can import face_shaper
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from face_shaper import ComfyUIFaceShaper
 from PIL import Image

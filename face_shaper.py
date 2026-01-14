@@ -1106,7 +1106,7 @@ class ComfyUIFaceShaper:
             cx_rel = base_center[0] + (iris_pos_x * 0.5)
             cy_rel = base_center[1] + (iris_pos_y * 0.5)
             cx, cy = to_pixel((cx_rel, cy_rel))
-            # Use the same base as to_pixel for consistency in uniform scaling.
+            # Use the uniform base (min canvas dimension) for consistent scaling with to_pixel.
             radius_px = base_radius * iris_size * base * camera_distance
             bbox = [
                 cx - radius_px,
