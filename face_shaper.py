@@ -688,9 +688,11 @@ class ComfyUIFaceShaper:
             lip_upper_size_y = settings_list[22]
             lip_lower_size_y = settings_list[23]
             # Indices 24-27: old cheek parameters (now occupied by eyebrow params in new format)
-            # In old format: 24=cheek_left_pos_x, 25=cheek_left_pos_y, 26=cheek_right_pos_x, 27=cheek_right_pos_y
-            # In new format: 24=eyebrow_left_size_x, 25=eyebrow_left_size_y, etc. (shifted down after cheek removal)
-            # For backward compatibility, we load from old indices which now contain eyebrow data
+            # BACKWARD COMPATIBILITY: When importing OLD format settings_list:
+            # - OLD indices 24-27 contained cheek params (ignored)
+            # - OLD indices 28+ contained eyebrow/nose/camera params (load from these)
+            # - NEW indices 24+ will contain eyebrow/nose/camera params (shifted down after export)
+            # This ensures old workflows correctly restore eyebrow/nose/camera settings
             eyebrow_left_size_x = settings_list[28]
             eyebrow_left_size_y = settings_list[29]
             eyebrow_left_rotation = settings_list[30]
