@@ -5,8 +5,8 @@ This module implements a custom node that draws a stylized facial mask based on
 SVG‑derived coordinates extracted from Face_Mask_female.svg (viewBox 270.93331×270.93331). 
 Users can adjust the positions and sizes of distinct facial features including:
 outer head outline, eyes (with independent rotation), irises, eyebrows, nose (single 
-merged object with integrated tip control), lips (upper and lower with direction-specific 
-scaling), and cheeks. All coordinates are normalized to [0-1] range. Users can select 
+merged object with integrated tip control), and lips (upper and lower with direction-specific 
+scaling). All coordinates are normalized to [0-1] range. Users can select 
 a gender preset (currently both genders use the same coordinates), change the canvas 
 size and camera distance, and control the line thickness. The output is black lines 
 on either a white or transparent background as a tensor compatible with ComfyUI workflows.
@@ -268,19 +268,6 @@ FEMALE_FACE: Dict[str, List[Tuple[float, float]]] = {
         (0.500000, 0.953125),
         (0.428240, 0.935952),  # Close the polyline (z command)
     ],
-    # Cheeks
-    "cheek_right": [
-        (0.654307, 0.695507),
-        (0.818298, 0.464385),
-        (0.773225, 0.603442),
-        (0.683077, 0.729073),
-    ],
-    "cheek_left": [
-        (0.345693, 0.695507),
-        (0.181702, 0.464385),
-        (0.226775, 0.603442),
-        (0.316923, 0.729073),
-    ],
     # Lips - now split into upper and lower (single shapes each)
     # CORRECTED: lips_upper is now the actual upper lip (smaller y values)
     # and lips_lower is the actual lower lip (larger y values)
@@ -397,19 +384,13 @@ FEMALE_FACE_IRISES = {
 }
 
 # Number of parameters in settings_list (for import/export functionality)
-# Current list: 50 parameters total
+# NEW format: 45 parameters total (after cheek removal)
 # Breakdown:
-# - 0-46: 47 feature control parameters (eyes, eyebrows, nose, lips, cheeks, camera, etc.)
-# - 47-48: 2 canvas dimensions (width, height) - exported but not imported
-# - 49: 1 cheeks_enabled toggle (boolean)
+# - 0-42: 43 feature control parameters (eyes, eyebrows, nose, lips, camera, etc.)
+# - 43-44: 2 canvas dimensions (width, height) - exported but not imported
+# OLD format had 50 parameters with cheek controls at indices 24-27 and 49
 # Set to 60 to allow for future expansion
 SETTINGS_LIST_LENGTH = 60
-
-# Cheek connection points (hardcoded from SVG coordinates)
-CHEEK_LEFT_END_POINT = (0.316923, 0.729073)
-CHEEK_LEFT_OUTER_HEAD_POINT = (0.320690, 0.854875)
-CHEEK_RIGHT_END_POINT = (0.683077, 0.729073)
-CHEEK_RIGHT_OUTER_HEAD_POINT = (0.679310, 0.854875)
 
 def _face_data_for_gender(gender: str):
     """Return the polyline coordinates for the requested gender preset."""
@@ -581,23 +562,6 @@ class ComfyUIFaceShaper:
                     "FLOAT",
                     {"default": 0.0, "min": -45.0, "max": 45.0, "step": 0.1},
                 ),
-                "cheeks_enabled": ("BOOLEAN", {"default": True}),
-                "cheek_left_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
-                ),
-                "cheek_left_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
-                ),
-                "cheek_right_pos_x": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
-                ),
-                "cheek_right_pos_y": (
-                    "FLOAT",
-                    {"default": 0.0, "min": -0.3, "max": 0.3, "step": 0.005},
-                ),
                 "nose_pos_y": (
                     "FLOAT",
                     {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
@@ -677,11 +641,6 @@ class ComfyUIFaceShaper:
         eyebrow_right_pos_x: float,
         eyebrow_right_pos_y: float,
         eyebrow_right_rotation: float,
-        cheeks_enabled: bool,
-        cheek_left_pos_x: float,
-        cheek_left_pos_y: float,
-        cheek_right_pos_x: float,
-        cheek_right_pos_y: float,
         nose_pos_y: float,
         nose_size_x: float,
         nose_size_y: float,
@@ -728,10 +687,12 @@ class ComfyUIFaceShaper:
             lip_size_x = settings_list[21]
             lip_upper_size_y = settings_list[22]
             lip_lower_size_y = settings_list[23]
-            cheek_left_pos_x = settings_list[24]
-            cheek_left_pos_y = settings_list[25]
-            cheek_right_pos_x = settings_list[26]
-            cheek_right_pos_y = settings_list[27]
+            # Indices 24-27: old cheek parameters (now occupied by eyebrow params in new format)
+            # BACKWARD COMPATIBILITY: When importing OLD format settings_list:
+            # - OLD indices 24-27 contained cheek params (ignored)
+            # - OLD indices 28+ contained eyebrow/nose/camera params (load from these)
+            # - NEW indices 24+ will contain eyebrow/nose/camera params (shifted down after export)
+            # This ensures old workflows correctly restore eyebrow/nose/camera settings
             eyebrow_left_size_x = settings_list[28]
             eyebrow_left_size_y = settings_list[29]
             eyebrow_left_rotation = settings_list[30]
@@ -751,15 +712,10 @@ class ComfyUIFaceShaper:
             camera_pos_y = settings_list[44]
             fov_mm = settings_list[45]
             line_thickness = settings_list[46]
-            # Index 49: cheeks_enabled (new parameter, fallback to True if missing)
-            # Check if settings_list has at least 50 elements (index 49 exists)
-            if len(settings_list) > 49:
-                cheeks_enabled = settings_list[49]
-            else:
-                cheeks_enabled = True
-            # Note: canvas_width/canvas_height (indices 47-48) are exported but not imported
+            # Index 49: old cheeks_enabled (ignored for backward compatibility)
+            # Note: canvas_width/canvas_height (indices 47-48 in old format) are exported but not imported
             # as they are always provided as direct parameters to the method
-            # Total exported: 50 parameters (indices 0-49)
+            # New settings_export format: 45 parameters (indices 0-44), no cheek params
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
@@ -1048,36 +1004,6 @@ class ComfyUIFaceShaper:
             pixel_points = [to_pixel(pt) for pt in lips_lower_scaled]
             draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
 
-        # Draw cheeks with position offsets and connect them to outer head (if enabled)
-        if cheeks_enabled:
-            if "cheek_left" in face_points:
-                cheek_left = translate_polygon(
-                    face_points["cheek_left"],
-                    cheek_left_pos_x,
-                    cheek_left_pos_y,
-                )
-                pixel_points = [to_pixel(pt) for pt in cheek_left]
-                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-                # Connect cheek_left last point to outer head point
-                cheek_left_end = to_pixel((CHEEK_LEFT_END_POINT[0] + cheek_left_pos_x,
-                                           CHEEK_LEFT_END_POINT[1] + cheek_left_pos_y))
-                outer_head_point = to_pixel(CHEEK_LEFT_OUTER_HEAD_POINT)
-                draw.line([cheek_left_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
-
-            if "cheek_right" in face_points:
-                cheek_right = translate_polygon(
-                    face_points["cheek_right"],
-                    cheek_right_pos_x,
-                    cheek_right_pos_y,
-                )
-                pixel_points = [to_pixel(pt) for pt in cheek_right]
-                draw.line(pixel_points, fill=(0, 0, 0), width=stroke_width)
-                # Connect cheek_right last point to outer head point
-                cheek_right_end = to_pixel((CHEEK_RIGHT_END_POINT[0] + cheek_right_pos_x,
-                                            CHEEK_RIGHT_END_POINT[1] + cheek_right_pos_y))
-                outer_head_point = to_pixel(CHEEK_RIGHT_OUTER_HEAD_POINT)
-                draw.line([cheek_right_end, outer_head_point], fill=(0, 0, 0), width=stroke_width)
-
         # Transform and draw both eyes with scale → rotate → translate
         eye_right = transform_eye(
             face_points["eye_right"],
@@ -1152,10 +1078,6 @@ class ComfyUIFaceShaper:
             lip_size_x,
             lip_upper_size_y,
             lip_lower_size_y,
-            cheek_left_pos_x,
-            cheek_left_pos_y,
-            cheek_right_pos_x,
-            cheek_right_pos_y,
             eyebrow_left_size_x,
             eyebrow_left_size_y,
             eyebrow_left_rotation,
@@ -1177,7 +1099,6 @@ class ComfyUIFaceShaper:
             line_thickness,
             canvas_width,
             canvas_height,
-            cheeks_enabled,
         ]
         
         return (tensor, settings_export)
