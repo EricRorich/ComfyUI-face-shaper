@@ -384,10 +384,11 @@ FEMALE_FACE_IRISES = {
 }
 
 # Number of parameters in settings_list (for import/export functionality)
-# Current list: 45 parameters total
+# NEW format: 45 parameters total (after cheek removal)
 # Breakdown:
 # - 0-42: 43 feature control parameters (eyes, eyebrows, nose, lips, camera, etc.)
 # - 43-44: 2 canvas dimensions (width, height) - exported but not imported
+# OLD format had 50 parameters with cheek controls at indices 24-27 and 49
 # Set to 60 to allow for future expansion
 SETTINGS_LIST_LENGTH = 60
 
@@ -686,7 +687,10 @@ class ComfyUIFaceShaper:
             lip_size_x = settings_list[21]
             lip_upper_size_y = settings_list[22]
             lip_lower_size_y = settings_list[23]
-            # Indices 24-27: old cheek parameters (skipped for backward compatibility)
+            # Indices 24-27: old cheek parameters (now occupied by eyebrow params in new format)
+            # In old format: 24=cheek_left_pos_x, 25=cheek_left_pos_y, 26=cheek_right_pos_x, 27=cheek_right_pos_y
+            # In new format: 24=eyebrow_left_size_x, 25=eyebrow_left_size_y, etc. (shifted down after cheek removal)
+            # For backward compatibility, we load from old indices which now contain eyebrow data
             eyebrow_left_size_x = settings_list[28]
             eyebrow_left_size_y = settings_list[29]
             eyebrow_left_rotation = settings_list[30]
@@ -706,10 +710,10 @@ class ComfyUIFaceShaper:
             camera_pos_y = settings_list[44]
             fov_mm = settings_list[45]
             line_thickness = settings_list[46]
-            # Index 49: old cheeks_enabled (skipped for backward compatibility)
-            # Note: canvas_width/canvas_height (indices 47-48) are exported but not imported
+            # Index 49: old cheeks_enabled (ignored for backward compatibility)
+            # Note: canvas_width/canvas_height (indices 47-48 in old format) are exported but not imported
             # as they are always provided as direct parameters to the method
-            # Total exported: 45 parameters (indices 0-44, excluding old cheek params at 24-27, 49)
+            # New settings_export format: 45 parameters (indices 0-44), no cheek params
         
         face_points = _face_data_for_gender(gender)
         iris_data = _iris_data_for_gender(gender)
