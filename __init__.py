@@ -10,10 +10,10 @@ from .face_shaper import ComfyUIFaceShaper
 
 # Mappings used by ComfyUI to locate and display the node.
 NODE_CLASS_MAPPINGS = {
-    "RORICH-AI": ComfyUIFaceShaper,
+    "RORICH-AI.COM": ComfyUIFaceShaper,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "RORICH-AI": "Face-Shaper",
+    "RORICH-AI.COM": "Face-Shaper",
 }
 
 # Export web directory for client-side extensions
