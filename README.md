@@ -1,6 +1,6 @@
 # ComfyUI-face-shaper WIP
 
-A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline (with separate jaw and forehead controls), eyes (with independent rotation), irises, eyebrows, nose (single merged object), lips (upper and lower with direction-specific scaling), and cheeks. AT THE MOMENT IT WORKS ONLY WITH QWEN-IMAGE-EDIT-2511.
+A custom ComfyUI node that draws a parametric facial mask with black lines on either a white or transparent background. The node provides extensive control over individual facial features including outer head outline (with separate jaw and forehead controls), eyes (with independent rotation), irises, eyebrows, nose (single merged object), and lips (upper and lower with direction-specific scaling). AT THE MOMENT IT WORKS ONLY WITH QWEN-IMAGE-EDIT-2511.
 
 <img src="Images/ComfyUI_01467_.png" alt="image alt" width="512">
 <img src="Images/ComfyUI_01517_.jpg" alt="image alt" width="512">
@@ -171,12 +171,11 @@ All size parameters are multipliers:
 The node renders distinct SVG paths organized into feature groups:
 
 1. **Outer head** (21 points, closed) - Full face outline contour with per-region horizontal scaling (jaw, mid-face, forehead)
-2. **Cheeks** (left: 4 points, right: 4 points) - Cheek contours with automatic connections to outer head
-3. **Lips** (2 closed shapes: upper: 11 points, lower: 13 points) - Mouth/lips area with direction-specific scaling
-4. **Eyes** (left: 16 points closed, right: 16 points closed) - Eye outlines with independent rotation controls
-5. **Irises** (left: circle, right: circle) - Pupil/iris circles
-6. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves with rotation controls
-7. **Nose** (13 points) - Single merged nose object updated from latest SVG
+2. **Lips** (2 closed shapes: upper: 11 points, lower: 13 points) - Mouth/lips area with direction-specific scaling
+3. **Eyes** (left: 16 points closed, right: 16 points closed) - Eye outlines with independent rotation controls
+4. **Irises** (left: circle, right: circle) - Pupil/iris circles
+5. **Eyebrows** (left: 5 points, right: 5 points) - Eyebrow curves with rotation controls
+6. **Nose** (13 points) - Single merged nose object updated from latest SVG
 
 ## Future Improvements
 
